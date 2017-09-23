@@ -6,7 +6,7 @@
 
 ; An example Push state
 (def example-push-state
-  {:exec '(integer_+ integer_-)
+  {:exec '(1 integer_+ integer_-)
    :integer '(1 2 3 4 5 6 7)
    :string '("abc" "def")
    :input {:in1 4 :in2 6}})
@@ -51,27 +51,26 @@
 (defn push-to-stack
   "Pushes item onto stack in state, returning the resulting state."
   [state stack item]
-  :STUB
-  )
+  (assoc state stack
+         (conj (state stack) item)))
 
 (defn pop-stack
   "Removes top item of stack, returning the resulting state."
   [state stack]
-  :STUB
-  )
+  (assoc state stack (rest (state stack))))
 
 (defn peek-stack
   "Returns top item on a stack. If stack is empty, returns :no-stack-item"
   [state stack]
-  :STUB
-  )
+  (if (empty? (state stack))
+    :no-stack-item
+    (first (state stack))))
 
 (defn empty-stack?
   "Returns true if the stack is empty in state."
   [state stack]
-  :STUB
-  )
-
+  (empty? (state stack)))
+ 
 (defn get-args-from-stacks
   "Takes a state and a list of stacks to take args from. If there are enough args
   on each of the desired stacks, returns a map of the form {:state :args}, where
@@ -79,10 +78,10 @@
   the stacks. If there aren't enough args on the stacks, returns :not-enough-args."
   [state stacks]
   (loop [state state
-         stacks stacks
+         stacks (reverse stacks)
          args '()]
     (if (empty? stacks)
-      {:state state :args (reverse args)}
+      {:state state :args args}
       (let [stack (first stacks)]
         (if (empty-stack? state stack)
           :not-enough-args
@@ -99,7 +98,7 @@
   (let [args-pop-result (get-args-from-stacks state arg-stacks)]
     (if (= args-pop-result :not-enough-args)
       state
-      (let [result (apply function (reverse (:args args-pop-result)))
+      (let [result (apply function (:args args-pop-result))
             new-state (:state args-pop-result)]
         (push-to-stack new-state return-stack result)))))
 
@@ -111,8 +110,7 @@
   "Pushes the input labeled :in1 on the inputs map onto the :exec stack.
   Can't use make-push-instruction, since :input isn't a stack, but a map."
   [state]
-  :STUB
-  )
+  (push-to-stack state :exec ((state :input) :in1)))
 
 (defn integer_+
   "Adds the top two integers and leaves result on the integer stack.
@@ -136,23 +134,26 @@
   "Subtracts the top two integers and leaves result on the integer stack.
   Note: the second integer on the stack should be subtracted from the top integer."
   [state]
-  :STUB
-  )
+  (make-push-instruction state -' [:integer :integer] :integer))
 
 (defn integer_*
   "Multiplies the top two integers and leaves result on the integer stack."
   [state]
-  :STUB
-  )
+  (make-push-instruction state *' [:integer :integer] :integer))
+
+(defn %
+  "a protected division function"
+  [numerator denominator]
+  (if (zero? denominator)
+    numerator
+    (quot numerator denominator)))
 
 (defn integer_%
   "This instruction implements 'protected division'.
   In other words, it acts like integer division most of the time, but if the
   denominator is 0, it returns the numerator, to avoid divide-by-zero errors."
   [state]
-  :STUB
-  )
-
+  (make-push-instruction state % [:integer :integer] :integer))
 
 ;;;;;;;;;;
 ;; Interpreter
@@ -163,17 +164,27 @@
   or if the next element is a literal, pushes it onto the correct stack.
   Returns the new Push state."
   [push-state]
-  :STUB
-  )
+  (let [next (peek-stack push-state :exec)
+        state (pop-stack push-state :exec)]
+    (cond
+      (integer? next) (push-to-stack state :integer next)
+      (string? next) (push-to-stack state :string next)
+      ;; resolve will evaluate the symbol next.
+      :ELSE ((resolve next) state))))
 
 (defn interpret-push-program
   "Runs the given program starting with the stacks in start-state. Continues
   until the exec stack is empty. Returns the state of the stacks after the
   program finishes executing."
   [program start-state]
-  :STUB
-  )
+  (loop [state (assoc start-state
+                      :exec
+                      (concat program (start-state :exec)))]
+    (if (= :no-stack-item (peek-stack state :exec))
+      state
+      (recur (interpret-one-step state)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;
 ;; GP
