@@ -6,7 +6,7 @@
 
 ; An example Push state
 (def example-push-state
-  {:exec '(1 integer_+ integer_-)
+  {:exec '(integer_+ integer_-)
    :integer '(1 2 3 4 5 6 7)
    :string '("abc" "def")
    :input {:in1 4 :in2 6}})
@@ -167,10 +167,14 @@
   (let [next (peek-stack push-state :exec)
         state (pop-stack push-state :exec)]
     (cond
+      ;; empty exec stack
+      (= :no-stack-item next) state
+      ;; integer
       (integer? next) (push-to-stack state :integer next)
+      ;; string
       (string? next) (push-to-stack state :string next)
-      ;; resolve will evaluate the symbol next.
-      :ELSE ((resolve next) state))))
+      ;; eval will evaluate the symbol next.
+      :ELSE ((eval next) state))))
 
 (defn interpret-push-program
   "Runs the given program starting with the stacks in start-state. Continues
