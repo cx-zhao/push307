@@ -471,7 +471,7 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
   [[][][][][][][]])
 
 (def example-board
-  [[1] [2 2 2 2 2 2] [3 3 3 3 3 3] [] [] [] [3 3 3 3 3 3]])
+  [[1] [2 2 2 2 2] [3 3 3 3 3 3] [] [] [] [3 3 3 3 3 3]])
 
 (defn initialize-board
   []
@@ -501,10 +501,13 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
 
 (defn checklist
   [board colnum]
-  (let [col (get board colnum)]
+  (let [col (get board colnum)
+        index (dec (count col))]
     (cond-> []
       ;; check vertical
       (> (count col) 3) (conj (subvec col (- (count col) 4)))
+      ;; check horizontal
+      (>= index 0) (conj (vec (map #(get % index) board)))
       ;; check diagonal to left bottom
       (and (> (count col) 3) (> (count col) 2)) (conj col))))
 
