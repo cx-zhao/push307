@@ -54,6 +54,7 @@
   {:exec '()
    :integer '()
    :string '()
+   :bool '()
    :game-state []
    :input {}})
 
@@ -180,6 +181,15 @@
   [state]
   (make-push-instruction state protected-division [:integer :integer] :integer))
 
+
+(defn if-exec-help
+  [bool exec1 exec2]
+  (if bool
+    exec1
+    exec2))
+
+
+
 ;;;;;;;;;;
 ;; Interpreter
 
@@ -198,7 +208,7 @@
       (= :no-stack-item next-instr) state
       (integer? next-instr) (push-to-stack state :integer next-instr)
       (string? next-instr) (push-to-stack state :string next-instr)
-      
+      (= (type next-instr) (type true)) (push-to-stack state :boolean next-instr)
       :ELSE ((eval next-instr) state))))
 
 
@@ -562,7 +572,7 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
       (println player)
       (println)
       (if (win-check checklist player)
-        (println player " WINS!!!")
+        player
         (recur game-board
                (switch-player player p1 p2)
                (random-strategy))))))
