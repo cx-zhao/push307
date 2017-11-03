@@ -471,7 +471,21 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
   [[][][][][][][]])
 
 (def example-board
-  [[1] [2 2 2 2 2] [3 3 3 3 3 3] [] [] [] [3 3 3 3 3 3]])
+  [["***"] ["***""ooo""***""***""***""***"] ["ooo""ooo""ooo""ooo"] [] [] [] ["***""ooo"]])
+
+(defn print-board
+  "Print a game board"
+  [board]
+  (loop [index 5]
+    (apply print (map #(get % index) board))
+    (println)
+    (if (< index 1)
+      nil
+      (recur (dec index)))))
+
+;; test
+;;(print-board example-board)
+
 
 (defn initialize-board
   []
@@ -495,28 +509,65 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
   (let [colnum (next-avail-col board col)]
     (update board colnum #(conj % disc))))
 
-(defn win-check
-  [board colnum disc]
-  (let [col (get board colnum)]))
+;; test
+;;(print-board (play-a-step example-board "***" 1))
 
-(defn checklist
+(defn win-check
+  [checklist disc]
+  (not= (count (filter #(= [disc disc disc disc] %) checklist)) 0))
+
+(defn check
   [board colnum]
   (let [col (get board colnum)
         index (dec (count col))]
+    ;; (print-board board)
     (cond-> []
       ;; check vertical
-      (> (count col) 3) (conj (subvec col (- (count col) 4)))
-      ;; check horizontal
-      (>= index 0) (conj (vec (map #(get % index) board)))
-      ;; check diagonal to left bottom
-      (and (> (count col) 3) (> (count col) 2)) (conj col))))
+      (> index 2) (conj (subvec col (- (count col) 4)))
+      ;; check horizontal to the left
+      (> colnum 2) (conj (vec (map #(get (get board (- colnum %)) index) (range 4))))
+      ;; check horizontal to the right
+      (< colnum 4) (conj (vec (map #(get (get board (+ colnum %)) index) (range 4))))
+      ;; check diagonal, to top right
+      (and (< index 3) (< colnum 4)) (conj (vec (map #(get (get board (+ colnum %))
+                                                           (+ index %)) (range 4))))
+      ;; check diagonal, to bottom left
+      (and (> index 2) (> colnum 2)) (conj (vec (map #(get (get board (- colnum %))
+                                                           (- index %)) (range 4))))
+      ;;check diagonal, to top left
+      (and (< index 3) (> colnum 2)) (conj (vec (map #(get (get board (- colnum %))
+                                                           (+ index %)) (range 4))))
+      ;; check diagonal, to bottom right
+      (and (> index 2) (< colnum 4)) (conj (vec (map #(get (get board (+ colnum %))
+                                                           (- index %)) (range 4)))))))
 
-(defn get-diag
-  [board colnum]
-  (let [col (get board colnum)
-        rownum (dec (count col))]
-    ))
-  
+(defn switch-player
+  [player p1 p2]
+  (if (= player p1)
+    p2
+    p1))
+
+(defn game
+  [board p1 p2]
+  (loop [init-board board
+         player p1
+         step (random-strategy)]
+    
+    (let [colnum (next-avail-col init-board step)
+          game-board (play-a-step init-board player step)
+          checklist (check game-board colnum)]
+      
+      (print-board game-board)
+      (println checklist)
+      (println player)
+      (println)
+      (if (win-check checklist player)
+        (println player " WINS!!!")
+        (recur game-board
+               (switch-player player p1 p2)
+               (random-strategy))))))
+    
+;;(game empty-board "***" "ooo")
 ;;-------------------------------------
 (defn abs-val
   "Returns the absolute value of the input number."
