@@ -182,26 +182,29 @@
   [state]
   (make-push-instruction state protected-division [:integer :integer] :integer))
 
-<<<<<<< HEAD
-
-(defn if-exec-help
-  [bool exec1 exec2]
-  (if bool
-    exec1
-    exec2))
-
-
-=======
 (defn if-int-help
+  "Placeholder"
   [bool int1 int2]
   (if bool
     int1
     int2))
 
 (defn if-int
+  "Placeholder"
   [state]
-  (make-push-instruction state if-int-help [:bool :integer :integer] :integer)) 
->>>>>>> d8a841e293b305b96ce60b0cafa217d1188cda86
+  (make-push-instruction state if-int-help [:bool :integer :integer] :integer))
+
+(defn if-exec-help
+  "Placeholder"
+  [bool exec1 exec2]
+  (if bool
+    exec1
+    exec2))
+
+(defn if-exec
+  "Placeholder"
+  [state]
+  (make-push-instruction state if-exec-help [:bool :exec :exec] :exec)) 
 
 ;;;;;;;;;;
 ;; Interpreter
