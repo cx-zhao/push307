@@ -43,6 +43,7 @@
    'integer_-
    'integer_*
    'integer_%
+   'if-int
    0
    1
    ))
@@ -179,6 +180,16 @@
   denominator is 0, it returns the numerator, to avoid divide-by-zero errors."
   [state]
   (make-push-instruction state protected-division [:integer :integer] :integer))
+
+(defn if-int-help
+  [bool int1 int2]
+  (if bool
+    int1
+    int2))
+
+(defn if-int
+  [state]
+  (make-push-instruction state if-int-help [:bool :integer :integer] :integer)) 
 
 ;;;;;;;;;;
 ;; Interpreter
