@@ -182,7 +182,6 @@
   [state]
   (make-push-instruction state protected-division [:integer :integer] :integer))
 
-<<<<<<< HEAD
 
 (defn if-exec-help
   [bool exec1 exec2]
@@ -191,7 +190,6 @@
     exec2))
 
 
-=======
 (defn if-int-help
   [bool int1 int2]
   (if bool
@@ -201,7 +199,6 @@
 (defn if-int
   [state]
   (make-push-instruction state if-int-help [:bool :integer :integer] :integer)) 
->>>>>>> d8a841e293b305b96ce60b0cafa217d1188cda86
 
 ;;;;;;;;;;
 ;; Interpreter
