@@ -44,8 +44,10 @@
    'integer_*
    'integer_%
    'if-int
+   'if-exec
    0
    1
+   2
    ))
 
 ;;;;;;;;;;
@@ -183,28 +185,28 @@
   (make-push-instruction state protected-division [:integer :integer] :integer))
 
 (defn if-int-help
-  "Placeholder"
+  "Takes in a bool and two integers and returns one of the integers depending on the bool value."
   [bool int1 int2]
   (if bool
     int1
     int2))
 
 (defn if-int
-  "Placeholder"
+  "Make a basic if push instruction with ints."
   [state]
   (make-push-instruction state if-int-help [:bool :integer :integer] :integer))
 
 (defn if-exec-help
-  "Placeholder"
+  "Takes in a bool and two exec instructions and returns one of the exec instructions depending on the bool value."
   [bool exec1 exec2]
   (if bool
     exec1
     exec2))
 
 (defn if-exec
-  "Placeholder"
+  "Make a basic if push instruction with exec instructions."
   [state]
-  (make-push-instruction state if-exec-help [:bool :exec :exec] :exec)) 
+  (make-push-instruction state if-exec-help [:bool :exec :exec] :exec))
 
 ;;;;;;;;;;
 ;; Interpreter
