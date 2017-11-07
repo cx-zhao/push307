@@ -184,6 +184,15 @@
   [state]
   (make-push-instruction state protected-division [:integer :integer] :integer))
 
+<<<<<<< HEAD
+
+(defn if-exec-help
+  [bool exec1 exec2]
+  (if bool
+    exec1
+    exec2))
+
+
 (defn if-int-help
   "Takes in a bool and two integers and returns one of the integers depending on the bool value."
   [bool int1 int2]
