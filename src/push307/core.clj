@@ -46,6 +46,8 @@
    'if-int
    0
    1
+   true
+   false
    ))
 
 ;;;;;;;;;;
@@ -119,7 +121,29 @@
       state
       (let [result (apply function (:args args-pop-result))
             new-state (:state args-pop-result)]
-        (push-to-stack new-state return-stack result)))))
+          (push-to-stack new-state return-stack result)))))
+
+
+(defn make-push-instruction-list
+  "A utility function for making Push instructions.
+  Takes a state, the function to apply to the args,
+  the stacks to take the args from, and the stacks to return the result to.
+  Applies the function to the args (taken from the stacks) and pushes
+  the return values onto return-stacks in the resulting state."
+  [state function arg-stacks return-stack]
+  (let [args-pop-result (get-args-from-stacks state arg-stacks)]
+    (if (= args-pop-result :not-enough-args)
+      state
+      (loop [result (apply function (:args args-pop-result))
+             new-state (:state args-pop-result)
+             return-list return-stack
+             num-return (count return-list)]
+        (if (zero? num-return)
+          new-state
+          (recur (rest result)
+                 (push-to-stack new-state (first return-list) (first result))
+                 (rest return-list)
+                 (dec num-return)))))))
 
 
 ;;;;;;;;;;
@@ -182,7 +206,6 @@
   [state]
   (make-push-instruction state protected-division [:integer :integer] :integer))
 
-<<<<<<< HEAD
 
 (defn if-exec-help
   [bool exec1 exec2]
@@ -198,10 +221,12 @@
     int1
     int2))
 
+
 (defn if-int
   "Placeholder"
   [state]
   (make-push-instruction state if-int-help [:bool :integer :integer] :integer))
+
 
 (defn if-exec-help
   "Placeholder"
@@ -210,14 +235,26 @@
     exec1
     exec2))
 
-(defn if-exec
+
+(defn exec-if
   "Placeholder"
   [state]
   (make-push-instruction state if-exec-help [:bool :exec :exec] :exec)) 
 
+
+;; remove later, just for testing
+(defn test
+  [a]
+  [1 "ert" 3 4 "asd" integer_+])
+
+;; remove later, just for testing
+(defn test1
+  [state]
+  (make-push-instruction-list state test [:integer] [:integer :string :integer :integer :string :exec]))
+
+
 ;;;;;;;;;;
 ;; Interpreter
-
 (defn interpret-one-step
   "A helper function for interpret-push-program.
   Takes a Push state and executes the next instruction on the exec stack,
