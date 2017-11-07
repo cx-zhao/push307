@@ -48,6 +48,8 @@
    0
    1
    2
+   true
+   false
    ))
 
 ;;;;;;;;;;
@@ -121,7 +123,29 @@
       state
       (let [result (apply function (:args args-pop-result))
             new-state (:state args-pop-result)]
-        (push-to-stack new-state return-stack result)))))
+          (push-to-stack new-state return-stack result)))))
+
+
+(defn make-push-instruction-list
+  "A utility function for making Push instructions.
+  Takes a state, the function to apply to the args,
+  the stacks to take the args from, and the stacks to return the result to.
+  Applies the function to the args (taken from the stacks) and pushes
+  the return values onto return-stacks in the resulting state."
+  [state function arg-stacks return-stack]
+  (let [args-pop-result (get-args-from-stacks state arg-stacks)]
+    (if (= args-pop-result :not-enough-args)
+      state
+      (loop [result (apply function (:args args-pop-result))
+             new-state (:state args-pop-result)
+             return-list return-stack
+             num-return (count return-list)]
+        (if (zero? num-return)
+          new-state
+          (recur (rest result)
+                 (push-to-stack new-state (first return-list) (first result))
+                 (rest return-list)
+                 (dec num-return)))))))
 
 
 ;;;;;;;;;;
@@ -184,7 +208,6 @@
   [state]
   (make-push-instruction state protected-division [:integer :integer] :integer))
 
-<<<<<<< HEAD
 
 (defn if-exec-help
   [bool exec1 exec2]
@@ -200,10 +223,12 @@
     int1
     int2))
 
+
 (defn if-int
   "Make a basic if push instruction with ints."
   [state]
   (make-push-instruction state if-int-help [:bool :integer :integer] :integer))
+
 
 (defn if-exec-help
   "Takes in a bool and two exec instructions and returns one of the exec instructions depending on the bool value."
@@ -212,14 +237,25 @@
     exec1
     exec2))
 
-(defn if-exec
+(defn exec-if
   "Make a basic if push instruction with exec instructions."
   [state]
   (make-push-instruction state if-exec-help [:bool :exec :exec] :exec))
 
+
+;; remove later, just for testing
+(defn test-helper
+  [a]
+  [1 "ert" 3 4 "asd" integer_+])
+
+;; remove later, just for testing
+(defn test1
+  [state]
+  (make-push-instruction-list state test-helper [:integer] [:integer :string :integer :integer :string :exec]))
+
+
 ;;;;;;;;;;
 ;; Interpreter
-
 (defn interpret-one-step
   "A helper function for interpret-push-program.
   Takes a Push state and executes the next instruction on the exec stack,
@@ -233,6 +269,7 @@
     (cond
       ;; If the exec stack is empty, do nothing.
       (= :no-stack-item next-instr) state
+      (vector? next-instr) (push-to-stack state :game-state next-instr)
       (integer? next-instr) (push-to-stack state :integer next-instr)
       (string? next-instr) (push-to-stack state :string next-instr)
       (= (type next-instr) (type true)) (push-to-stack state :boolean next-instr)
@@ -249,10 +286,15 @@
   ;; until the exec stack is empty.
   (loop [state (assoc start-state
                       :exec
-                      (concat program (start-state :exec)))]
-    (if (empty-stack? state :exec)
-      state
-      (recur (interpret-one-step state)))))
+                      (concat program (start-state :exec)))
+         num-of-evaluations 0]
+    (cond
+      (empty-stack? state :exec) state
+      ;; add a max. number of evaluations for each push program
+      ;; (avoid infinite loops)
+      (> num-of-evaluations 200) state
+      :ELSE (recur (interpret-one-step state)
+                   (inc num-of-evaluations)))))
 
 
 ;;;;;;;;;;
@@ -276,6 +318,8 @@
    :errors []
    :total-error 0})
 
+(def x (make-random-individual instructions 50))
+(def y (make-random-individual instructions 50))
 
 (defn tournament-selection
   "Selects an individual from the population using a tournament of size 5.
@@ -603,7 +647,53 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
         (recur game-board
                (switch-player player p1 p2)
                (random-strategy))))))
+
+
+(defn switching
+  [player individual1 individual2]
+  (if (= player "ooo")
+    individual2
+    individual1))
+
+(defn error-eval-connect4
+  "Takes an individual, an integer input, and a target function.
+  Returns absolute value of the difference (error)
+  between the output from the program and the desired output."
+  [individual1 individual2]
+  ;; init-state is an empty push state with :in1 = input value.
+  ;; result-state is the state after interpreting the push program of the
+  ;; individual over the init-state
+  ;; output is the integer on top of the integer stack in the result state.
+  (loop [init-board empty-board
+         player "ooo"
+         init-state (assoc empty-push-state :input {:in1 init-board})
+         result-state (interpret-push-program (individual1 :program) init-state)
+         step (peek-stack result-state :integer)]
     
+    ;; Note that if the program does not have any output,
+    ;; returns a penalty error of 1000.
+    (if (= step :no-stack-item)
+      1000
+      (let [colnum (next-avail-col init-board step)
+            game-board (play-a-step init-board player step)
+            checklist (check game-board colnum)
+            result-state-2 (interpret-push-program
+                            ((switching player individual1 individual2) :program)
+                            init-state)]
+      
+        ;;(print-board game-board)
+        ;;(println checklist)
+        ;;(println player)
+        ;;(println)
+        (cond (and (win-check checklist player) (= player "ooo")) 0
+              (and (win-check checklist player) (= player "***")) 1
+              :ELSE (recur game-board
+                           (switch-player player "ooo" "***")
+                           init-state
+                           result-state-2
+                           (peek-stack result-state :integer)))))))
+            
+     
 ;;(game empty-board "***" "ooo")
 ;;-------------------------------------
 (defn abs-val
