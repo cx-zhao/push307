@@ -47,6 +47,7 @@
    'exec-if
    0
    1
+   2
    true
    false
    ))
@@ -216,7 +217,7 @@
 
 
 (defn if-int-help
-  "Placeholder"
+  "Takes in a bool and two integers and returns one of the integers depending on the bool value."
   [bool int1 int2]
   (if bool
     int1
@@ -224,23 +225,22 @@
 
 
 (defn if-int
-  "Placeholder"
+  "Make a basic if push instruction with ints."
   [state]
   (make-push-instruction state if-int-help [:bool :integer :integer] :integer))
 
 
 (defn if-exec-help
-  "Placeholder"
+  "Takes in a bool and two exec instructions and returns one of the exec instructions depending on the bool value."
   [bool exec1 exec2]
   (if bool
     exec1
     exec2))
 
-
 (defn exec-if
-  "Placeholder"
+  "Make a basic if push instruction with exec instructions."
   [state]
-  (make-push-instruction state if-exec-help [:bool :exec :exec] :exec)) 
+  (make-push-instruction state if-exec-help [:bool :exec :exec] :exec))
 
 
 ;; remove later, just for testing
@@ -311,7 +311,7 @@
 
 
 (defn make-random-individual
-  "Takes a list of instructions and a meximum initial program size.
+  "Takes a list of instructions and a maximum initial program size.
   Creates and returns a new individual with a random push program.
   Sets the default error vector to be [] and total-error to be 0."
   [instructions max-initial-program-size]
@@ -741,7 +741,16 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
 
 (defn test-inputs
   [population]
-  (map #(nth population (mod % (count population))) (generate-random-index)))
+  (let [test-cases (map #(nth population (mod % (count population))) (generate-random-index))]
+    (conj test-cases
+           {:program '(1)
+            :errors []
+            :total-error 0}
+           {:program '(2)
+            :errors []
+            :total-error 0}
+    )
+    ))
 
 (defn error-function
   "Takes an individual and evaluates it on some test cases. For each test case,
