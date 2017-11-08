@@ -44,6 +44,7 @@
    'integer_*
    'integer_%
    'if-int
+   'exec-if
    0
    1
    true
@@ -58,7 +59,7 @@
    :integer '()
    :string '()
    :bool '()
-   :game-state []
+   :game-state '()
    :input {}})
 
 
@@ -247,6 +248,7 @@
   [a]
   [1 "ert" 3 4 "asd" integer_+])
 
+
 ;; remove later, just for testing
 (defn test1
   [state]
@@ -335,6 +337,24 @@
              (if (< ((first tourn-lst) :total-error) (winner :total-error))
                (first tourn-lst)
                winner)))))
+
+
+(defn lexicase-selection
+  "Selects an individual from the population using a tournament of size 5.
+  Returned individual will be a parent in the next generation."
+  [population error-eval]
+  ;; Takes five individuals from the population randomly.
+  ;; Does a tail recursion on comparing the total-error of two individuals;
+  ;; winner will be the individual with the lowest total-error so far.
+  (loop [candidates population
+         cases (take 10 (repeatedly #(rand-nth population)))]
+    (let [cand-list (filter #(= (error-eval % (first cases)) 0) population)]
+      (if (= 1 (count cases))
+        (if (empty? cand-list)
+          (rand-nth candidates)
+          (rand-nth cand-list))
+        (recur cand-list
+               (rest cases))))))
 
 
 (defn mutation-rate
@@ -465,7 +485,7 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
     best-program))
 
 
-(defn initialize-population
+(defn initialize-population-1
   "Takes a population-size, a list of instructions,
   , a maximum initial program size and an error function.
   Generates a population of randomly generated individuals.
@@ -479,6 +499,22 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
                       (make-random-individual instructions
                                               max-initial-program-size)))))
 
+(defn initialize-population
+  "Takes a population-size, a list of instructions,
+  , a maximum initial program size and an error function.
+  Generates a population of randomly generated individuals.
+  Then, evaluates the population by the input error function.
+  Returns the evaluated population."
+  [population-size instructions max-initial-program-size error-function]
+  ;; Evaluates each individual over the error function.
+       ;; Generates a population randomly.
+  (let [population
+        (take population-size
+              (repeatedly #(make-random-individual instructions
+                                                   max-initial-program-size)))]
+    (map #(error-function % population) population)))
+
+
 (defn generate-new-population
   "Takes a population, a population-size, and an error function to evaluate.
   Repeatedly generates an individual from the input population with
@@ -487,7 +523,7 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
   Returns the evaluated new population."
   [population population-size error-function]
   (take population-size
-        (repeatedly #(error-function (select-and-vary population)))))
+        (repeatedly #(error-function (select-and-vary population) population))))
 
 (defn push-gp
   "Main GP loop. Initializes the population, and then repeatedly
@@ -551,7 +587,13 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
   [[][][][][][][]])
 
 (def example-board
-  [["***"] ["***""ooo""***""***""***""***"] ["ooo""ooo""ooo""ooo"] [] [] [] ["***""ooo"]])
+  [["***"]
+   ["***""ooo""***""***""***""***"]
+   ["ooo""ooo""ooo""ooo"]
+   []
+   []
+   []
+   ["***""ooo"]])
 
 (defn print-board
   "Print a game board"
@@ -565,7 +607,6 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
 
 ;; test
 ;;(print-board example-board)
-
 
 (defn initialize-board
   []
@@ -650,12 +691,14 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
 
 (defn switching
   [player individual1 individual2]
+  ;;(print individual2)
   (if (= player "ooo")
     individual2
     individual1))
 
-(defn error-eval-connect4
-  "Takes an individual, an integer input, and a target function.
+
+(defn error-eval
+  "Takes an individual, an individual input.
   Returns absolute value of the difference (error)
   between the output from the program and the desired output."
   [individual1 individual2]
@@ -692,42 +735,15 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
                            result-state-2
                            (peek-stack result-state :integer)))))))
             
-     
-;;(game empty-board "***" "ooo")
-;;-------------------------------------
-(defn abs-val
-  "Returns the absolute value of the input number."
-  [x]
-  (if (< x 0)
-    (* -1 x)
-    x))
+(defn generate-random-index
+  []
+  (range 50))
 
+(defn test-inputs
+  [population]
+  (map #(nth population (mod % (count population))) (generate-random-index)))
 
-(defn error-eval
-  "Takes an individual, an integer input, and a target function.
-  Returns absolute value of the difference (error)
-  between the output from the program and the desired output."
-  [individual input]
-  ;; init-state is an empty push state with :in1 = input value.
-  ;; result-state is the state after interpreting the push program of the
-  ;; individual over the init-state
-  ;; output is the integer on top of the integer stack in the result state.
-  (let [init-state (assoc empty-push-state :input {:in1 input})
-        result-state (interpret-push-program (individual :program) init-state)
-        output (peek-stack result-state :integer)]
-    ;; Note that if the program does not have any output,
-    ;; returns a penalty error of 1000.
-    (if (= output :no-stack-item)
-     1000
-     (abs-val (- output (target-function input))))))
-
-
-; A list of test inputs: '(-5 -4 -3 -2 -1 0 1 2 3 4 5)
-(def test-inputs
-  (range -5 5))
-
-
-(defn regression-error-function
+(defn error-function
   "Takes an individual and evaluates it on some test cases. For each test case,
   runs program with the input set to :in1 in the :input map part of the Push state.
   Then, the output is the integer on top of the integer stack in the Push state
@@ -737,11 +753,26 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
   and :total-error set to the sum of the errors.
   Note: if the program doesn't leave anything on the integer stack,
   gives a penalty error of 1000."
-  [individual]
-  (let [errors (map #(error-eval individual %) test-inputs)
+  
+  ;; test-inputs will be a list of individuals
+  [individual population]
+  ;;(print (test-inputs population))
+  (let [errors (map #(error-eval individual %) (test-inputs population))
         total-error (apply +' errors)]
     ;; update the error vector and total-error of the individual
     (assoc individual :errors errors :total-error total-error)))
+
+
+;;(game empty-board "***" "ooo")
+;;-------------------------------------
+(defn abs-val
+  "Returns the absolute value of the input number."
+  [x]
+  (if (< x 0)
+    (* -1 x)
+    x))
+
+; A list of test inputs: '(-5 -4 -3 -2 -1 0 1 2 3 4 5)
 
 
 ;;;;;;;;;;
@@ -752,7 +783,7 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
   [& args]
   (binding [*ns* (the-ns 'push307.core)]
     (push-gp {:instructions instructions
-              :error-function regression-error-function
-              :max-generations 500
+              :error-function error-function
+              :max-generations 100
               :population-size 200
               :max-initial-program-size 50})))
