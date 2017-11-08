@@ -44,7 +44,7 @@
    'integer_*
    'integer_%
    'if-int
-   'if-exec
+   'exec-if
    0
    1
    2
@@ -310,7 +310,7 @@
 
 
 (defn make-random-individual
-  "Takes a list of instructions and a meximum initial program size.
+  "Takes a list of instructions and a maximum initial program size.
   Creates and returns a new individual with a random push program.
   Sets the default error vector to be [] and total-error to be 0."
   [instructions max-initial-program-size]
