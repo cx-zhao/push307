@@ -741,7 +741,16 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
 
 (defn test-inputs
   [population]
-  (map #(nth population (mod % (count population))) (generate-random-index)))
+  (let [test-cases (map #(nth population (mod % (count population))) (generate-random-index))]
+    (conj test-cases
+           {:program '(1)
+            :errors []
+            :total-error 0}
+           {:program '(2)
+            :errors []
+            :total-error 0}
+    )
+    ))
 
 (defn error-function
   "Takes an individual and evaluates it on some test cases. For each test case,
