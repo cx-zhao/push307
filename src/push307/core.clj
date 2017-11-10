@@ -55,7 +55,6 @@
    'integer-from-boolean
    'integer-max
    'integer-min
-   'integer-pop
    'integer-rand
    'integer-swap
    'boolean_=
@@ -73,7 +72,7 @@
    true
    false
    ))
-
+;;   'integer-rand
 ;;;;;;;;;;
 ;; Utilities
 
@@ -837,6 +836,7 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
 (defn play-a-step
   [board disc col]
   (let [colnum (next-avail-col board col)]
+    ;;(println colnum)
     (update board colnum #(conj % disc))))
 
 ;; test
@@ -905,7 +905,6 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
     individual2
     individual1))
 
-
 (defn error-eval
   "Takes an individual, an individual input.
   Returns absolute value of the difference (error)
@@ -923,27 +922,29 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
     
     ;; Note that if the program does not have any output,
     ;; returns a penalty error of 1000.
-    (if (= step :no-stack-item)
-      1000
-      (let [colnum (next-avail-col init-board step)
-            game-board (play-a-step init-board player step)
-            checklist (check game-board colnum)
-            result-state-2 (interpret-push-program
-                            ((switching player individual1 individual2) :program)
-                            init-state)]
-      
-        ;;(print-board game-board)
-        ;;(println checklist)
-        ;;(println player)
-        ;;(println)
-        (cond (and (win-check checklist player) (= player "ooo")) 0
-              (and (win-check checklist player) (= player "***")) 1
-              :ELSE (recur game-board
-                           (switch-player player "ooo" "***")
-                           init-state
-                           result-state-2
-                           (peek-stack result-state :integer)))))))
+    ;; if the game-board is full, return 1, fail to win
+    (if (= nil (next-avail-col init-board 0)) 1
+        (if (= step :no-stack-item)
+          1000
+          (let [colnum (next-avail-col init-board step)
+                game-board (play-a-step init-board player step)
+                checklist (check game-board colnum)
+                result-state-2 (interpret-push-program
+                                ((switching player individual1 individual2) :program)
+                                init-state)]
             
+            ;;(print-board game-board)
+            ;;(println checklist)
+            ;;(println player)
+            ;;(println)
+            (cond (and (win-check checklist player) (= player "ooo")) 0
+                  (and (win-check checklist player) (= player "***")) 1
+                  :ELSE (recur game-board
+                               (switch-player player "ooo" "***")
+                               init-state
+                               result-state-2
+                               (peek-stack result-state :integer))))))))
+  
 (defn generate-random-index
   []
   (range 50))
