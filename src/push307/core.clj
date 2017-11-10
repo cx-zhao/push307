@@ -1,12 +1,16 @@
 ;; Matt Goon and Candice Zhao
-;; Genetic Programming
-;; Term Project: Basic GP System
-;; 10/09/2017
+;; CS 307: Genetic Programming
+;; Professor Helmuth
+;; Term Project: Connect 4 GP System
+;; Fall 2017
 ;;
 ;; This program implemented a full GP algorithm, using Push as the
-;; representation language. The goal of the GP system is to find a program that
-;; calculates the function: f(x) = x^3 + x + 3 for any integer inputs.
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; representation language. The goal of the basic GP system is to find a
+;; program that calculates the function: f(x) = x^3 + x + 3 for any
+;; integer inputs. The goal for the expanded GP system is to find
+;; the program that "plays" or returns the next best move to win the
+;; Connect 4 game.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (ns push307.core
   (:gen-class))
@@ -19,6 +23,7 @@
   {:exec '(integer_+ integer_-)
    :integer '(1 2 3 4 5 6 7)
    :string '("abc" "def")
+   :bool '(true false)
    :input {:in1 4 :in2 6}})
 
 ; An example Push program
@@ -43,8 +48,25 @@
    'integer_-
    'integer_*
    'integer_%
-   'if-int
+   'integer_<
+   'integer_=
+   'integer_>
+   'integer-dup
+   'integer-from-boolean
+   'integer-max
+   'integer-min
+   'integer-pop
+   'integer-rand
+   'integer-swap
+   'boolean_=
+   'boolean-dup
+   'boolean-from-integer
+   'boolean-rand
+   'boolean-swap
+   'int-if
+   'exec-dup
    'exec-if
+   'exec-swap
    0
    1
    2
@@ -208,30 +230,206 @@
   [state]
   (make-push-instruction state protected-division [:integer :integer] :integer))
 
+(defn integer_<_helper
+  "Pushes TRUE onto the BOOLEAN stack if the second item is less than the top item, or FALSE otherwise."
+  [num1 num2]
+  (< num2 num1))
 
-(defn if-exec-help
-  [bool exec1 exec2]
-  (if bool
-    exec1
-    exec2))
+(defn integer_<
+  "placeholder"
+  [state]
+  (make-push-instruction state integer_<_helper [:integer :integer] :bool))
 
 
-(defn if-int-help
+(defn integer_=_helper
+  "Pushes TRUE onto the BOOLEAN stack if the top two items are equal, or FALSE otherwise."
+  [num1 num2]
+  (== num2 num1))
+
+(defn integer_=
+  "placeholder"
+  [state]
+  (make-push-instruction state integer_=_helper [:integer :integer] :bool))
+
+
+(defn integer_>_helper
+  "Pushes TRUE onto the BOOLEAN stack if the second item is greater than the top item, or FALSE otherwise."
+  [num1 num2]
+  (> num2 num1))
+
+(defn integer_>
+  "placeholder"
+  [state]
+  (make-push-instruction state integer_>_helper [:integer :integer] :bool))
+
+(defn integer-dup-helper
+  "Duplicates the top item on the INTEGER stack. Does not pop its argument."
+  [num]
+  [num num])
+
+(defn integer-dup
+  "placeholder"
+  [state]
+  (make-push-instruction-list state integer-dup-helper [:integer] [:integer :integer]))
+
+
+(defn integer-from-boolean-helper
+  "Pushes 1 if the top BOOLEAN is TRUE, or 0 if the top BOOLEAN is FALSE."
+  [bool]
+  (if bool 1 0))
+
+(defn integer-from-boolean
+  "placeholder"
+  [state]
+  (make-push-instruction state integer-from-boolean-helper [:bool] :integer))
+
+
+(defn integer-max-helper
+  "Pushes the maximum of the top two items."
+  [num1 num2]
+  (if (> num1 num2)
+    num1
+    num2))
+
+(defn integer-max
+  "placeholder"
+  [state]
+  (make-push-instruction state integer-max-helper [:integer :integer] :integer))
+
+
+(defn integer-min-helper
+  "Pushes the minimum of the top two items."
+  [num1 num2]
+  (if (< num1 num2)
+    num1
+    num2))
+
+(defn integer-min
+  "placeholder"
+  [state]
+  (make-push-instruction state integer-min-helper [:integer :integer] :integer))
+
+
+(defn integer-pop-helper
+  "Pops an integer off of the top of the INTEGER stack.
+  How to just pop something and return nothing to a stack?"
+  [num]
+  nil)
+
+(defn integer-pop
+  "placeholder"
+  [state]
+  (make-push-instruction state integer-pop-helper [:integer] :trash-stack))
+
+
+(def min-random-integer 0)
+(def max-random-integer 9)
+
+(defn integer-rand-helper
+  "Pushes a newly generated random integer that is greater than or equal to min-random-integer and less than or equal to max-random-integer."
+  [x]
+  (rand-nth (map #(+ % min-random-integer) (range (- max-random-integer min-random-integer)))))
+
+(defn integer-rand
+  "how to not pop anything and just push number?"
+  [state]
+  (make-push-instruction state integer-rand-helper [:integer] :integer))
+
+
+(defn integer-swap-helper
+  "Swaps the top two INTEGERs on the INTEGER stack."
+  [num1 num2]
+  [num2 num1])
+
+(defn integer-swap
+  "placeholder"
+  [state]
+  (make-push-instruction-list state integer-swap-helper [:integer :integer] [:integer :integer]))
+
+
+(defn boolean_=_helper
+  "Pushes TRUE onto the BOOLEAN stack if the top two BOOLEANs are equal, or FALSE otherwise."
+  [bool1 bool2]
+  (= bool1 bool2))
+
+(defn boolean_=
+  "placeholder"
+  [state]
+  (make-push-instruction state boolean_=_helper [:bool :bool] :bool))
+
+
+(defn boolean-dup-helper
+  "Duplicates the top item on the BOOLEAN stack. Does not pop its argument."
+  [bool]
+  [bool bool])
+
+(defn boolean-dup
+  "placeholder"
+  [state]
+  (make-push-instruction-list state boolean-dup-helper [:bool] [:bool :bool]))
+
+
+(defn boolean-from-integer-helper
+  "Pushes FALSE if the top INTEGER is 0, or TRUE otherwise."
+  [num]
+  (if (== 0 num)
+    false
+    true))
+
+(defn boolean-from-integer
+  "placeholder"
+  [state]
+  (make-push-instruction state boolean-from-integer-helper [:integer] :bool))
+
+
+(defn boolean-rand-helper
+  "Pushes a newly generated random integer that is greater than or equal to min-random-integer and less than or equal to max-random-integer."
+  [x]
+  (rand-nth [true false]))
+
+(defn boolean-rand
+  "how to not pop anything and just push number?"
+  [state]
+  (make-push-instruction state boolean-rand-helper [:bool] :bool))
+
+
+(defn boolean-swap-helper
+  "Swaps the top two BOOLEANs on the BOOLEAN stack."
+  [bool1 bool2]
+  [bool2 bool1])
+
+(defn boolean-swap
+  "placeholder"
+  [state]
+  (make-push-instruction-list state boolean-swap-helper [:bool :bool] [:bool :bool]))
+
+
+(defn int-if-help
   "Takes in a bool and two integers and returns one of the integers depending on the bool value."
   [bool int1 int2]
   (if bool
     int1
     int2))
 
-
-(defn if-int
+(defn int-if
   "Make a basic if push instruction with ints."
   [state]
-  (make-push-instruction state if-int-help [:bool :integer :integer] :integer))
+  (make-push-instruction state int-if-help [:bool :integer :integer] :integer))
 
 
-(defn if-exec-help
-  "Takes in a bool and two exec instructions and returns one of the exec instructions depending on the bool value."
+(defn exec-dup-helper
+  "Duplicates the top item on the EXEC stack. Does not pop its argument."
+  [exec]
+  [exec exec])
+
+(defn exec-dup
+  "placeholder"
+  [state]
+  (make-push-instruction-list state exec-dup-helper [:exec] [:exec :exec]))
+
+
+(defn exec-if-help
+  "If the top item of the BOOLEAN stack is TRUE then this removes the second item on the EXEC stack, leaving the first item to be executed. If it is false then it removes the first item, leaving the second to be executed."
   [bool exec1 exec2]
   (if bool
     exec1
@@ -240,7 +438,18 @@
 (defn exec-if
   "Make a basic if push instruction with exec instructions."
   [state]
-  (make-push-instruction state if-exec-help [:bool :exec :exec] :exec))
+  (make-push-instruction state exec-if-help [:bool :exec :exec] :exec))
+
+
+(defn exec-swap-helper
+  "Swaps the top two items on the EXEC stack."
+  [exec1 exec2]
+  [exec2 exec1])
+
+(defn exec-swap
+  "placeholder"
+  [state]
+  (make-push-instruction-list state exec-swap-helper [:exec :exec] [:exec :exec]))
 
 
 ;; remove later, just for testing
@@ -740,6 +949,8 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
   (range 50))
 
 (defn test-inputs
+  " A list of test cases for the error function.
+  All test cases are individuals (maps)."
   [population]
   (let [test-cases (map #(nth population (mod % (count population))) (generate-random-index))]
     (conj test-cases
@@ -747,6 +958,21 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
             :errors []
             :total-error 0}
            {:program '(2)
+            :errors []
+            :total-error 0}
+           {:program '(3)
+            :errors []
+            :total-error 0}
+           {:program '(4)
+            :errors []
+            :total-error 0}
+           {:program '(5)
+            :errors []
+            :total-error 0}
+           {:program '(6)
+            :errors []
+            :total-error 0}
+           {:program '(7)
             :errors []
             :total-error 0}
     )
