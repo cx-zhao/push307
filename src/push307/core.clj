@@ -5,9 +5,7 @@
 ;; Fall 2017
 ;;
 ;; This program implemented a full GP algorithm, using Push as the
-;; representation language. The goal of the basic GP system is to find a
-;; program that calculates the function: f(x) = x^3 + x + 3 for any
-;; integer inputs. The goal for the expanded GP system is to find
+;; representation language. The goal for the expanded GP system is to find
 ;; the program that "plays" or returns the next best move to win the
 ;; Connect 4 game.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -57,6 +55,7 @@
    'integer-min
    'integer-rand
    'integer-swap
+   'integer-pop
    'boolean_=
    'boolean-dup
    'boolean-from-integer
@@ -326,13 +325,13 @@
 
 (defn integer-rand-helper
   "Pushes a newly generated random integer that is greater than or equal to min-random-integer and less than or equal to max-random-integer."
-  [x]
+  []
   (rand-nth (map #(+ % min-random-integer) (range (- max-random-integer min-random-integer)))))
 
 (defn integer-rand
   "how to not pop anything and just push number?"
   [state]
-  (make-push-instruction state integer-rand-helper [:integer] :integer))
+  (make-push-instruction state integer-rand-helper [] :integer))
 
 
 (defn integer-swap-helper
@@ -923,61 +922,72 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
     ;; Note that if the program does not have any output,
     ;; returns a penalty error of 1000.
     ;; if the game-board is full, return 1, fail to win
-    (if (= nil (next-avail-col init-board 0)) 1
-        (if (= step :no-stack-item)
-          1000
-          (let [colnum (next-avail-col init-board step)
-                game-board (play-a-step init-board player step)
-                checklist (check game-board colnum)
-                result-state-2 (interpret-push-program
-                                ((switching player individual1 individual2) :program)
-                                init-state)]
-            
-            ;;(print-board game-board)
-            ;;(println checklist)
-            ;;(println player)
-            ;;(println)
-            (cond (and (win-check checklist player) (= player "ooo")) 0
-                  (and (win-check checklist player) (= player "***")) 1
-                  :ELSE (recur game-board
-                               (switch-player player "ooo" "***")
-                               init-state
-                               result-state-2
-                               (peek-stack result-state :integer))))))))
+    (if (full-board init-board)
+      1
+      (if (= step :no-stack-item)
+        1000
+        (let [colnum (next-avail-col init-board step)
+              game-board (play-a-step init-board player step)
+              checklist (check game-board colnum)
+              result-state-2 (interpret-push-program
+                              ((switching player individual1 individual2) :program)
+                              init-state)]
+          
+          ;;(print-board game-board)
+          ;;(println checklist)
+          ;;(println player)
+          ;;(println)
+          (cond (and (win-check checklist player) (= player "ooo")) 0
+                (and (win-check checklist player) (= player "***")) 1
+                :ELSE (recur game-board
+                             (switch-player player "ooo" "***")
+                             init-state
+                             result-state-2
+                             (peek-stack result-state :integer))))))))
   
 (defn generate-random-index
   []
   (range 50))
 
+(def test-case-0
+  {:program '(0) :errors [] :total-error 0})
+  
+(def test-case-1
+  {:program '(1) :errors [] :total-error 0})
+
+(def test-case-2
+  {:program '(2) :errors [] :total-error 0})
+
+(def test-case-3
+  {:program '(3) :errors [] :total-error 0})
+
+(def test-case-4
+  {:program '(4) :errors [] :total-error 0})
+
+(def test-case-5
+  {:program '(5) :errors [] :total-error 0})
+
+(def test-case-6
+  {:program '(6) :errors [] :total-error 0})
+
+(def test-case-rand
+  {:program '(integer-rand) :errors [] :total-error 0})
+
 (defn test-inputs
   " A list of test cases for the error function.
   All test cases are individuals (maps)."
   [population]
-  (let [test-cases (map #(nth population (mod % (count population))) (generate-random-index))]
+  (let [test-cases (map #(nth population (mod % (count population)))
+                        (generate-random-index))]
     (conj test-cases
-           {:program '(1)
-            :errors []
-            :total-error 0}
-           {:program '(2)
-            :errors []
-            :total-error 0}
-           {:program '(3)
-            :errors []
-            :total-error 0}
-           {:program '(4)
-            :errors []
-            :total-error 0}
-           {:program '(5)
-            :errors []
-            :total-error 0}
-           {:program '(6)
-            :errors []
-            :total-error 0}
-           {:program '(7)
-            :errors []
-            :total-error 0}
-    )
-    ))
+          test-case-0
+          test-case-1
+          test-case-2
+          test-case-3
+          test-case-4
+          test-case-5
+          test-case-6
+          test-case-rand)))
 
 (defn error-function
   "Takes an individual and evaluates it on some test cases. For each test case,
