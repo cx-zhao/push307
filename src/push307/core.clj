@@ -945,7 +945,7 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
               result-state-2 (interpret-push-program
                               ((switching player individual1 individual2) :program)
                               init-state-2)]
-          ;;(println ((init-state-2 :input):in2))
+          ;;(println (init-state-2 :input))
           ;;(print-board game-board)
           ;;(println checklist)
           ;;(println player)
@@ -970,7 +970,7 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
 
 (def test-case-2
   {:program '(2) :errors [] :total-error 0})
-y
+
 (def test-case-3
   {:program '(3) :errors [] :total-error 0})
 
