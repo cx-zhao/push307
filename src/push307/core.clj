@@ -180,6 +180,12 @@
   [state]
   (push-to-stack state :exec ((state :input) :in1)))
 
+(defn in2
+  "Pushes the input labeled :in1 on the inputs map onto the :exec stack.
+  Can't use make-push-instruction, since :input isn't a stack, but a map."
+  [state]
+  (push-to-stack state :exec ((state :input) :in2)))
+
 
 (defn integer_+
   "Adds the top two integers and leaves result on the integer stack.
@@ -919,7 +925,7 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
   ;; output is the integer on top of the integer stack in the result state.
   (loop [init-board empty-board
          player "ooo"
-         init-state (assoc empty-push-state :input {:in1 init-board})
+         init-state (assoc empty-push-state :input {:in1 init-board :in2 "ooo" :in3 "***"})
          result-state (interpret-push-program (individual1 :program) init-state)
          step (peek-stack result-state :integer)]
     
@@ -933,10 +939,13 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
         (let [colnum (next-avail-col init-board step)
               game-board (play-a-step init-board player step)
               checklist (check game-board colnum)
+              init-state-2 (assoc init-state :input {:in1 game-board
+                                                     :in2 (switch-player player "ooo" "***")
+                                                     :in3 player})
               result-state-2 (interpret-push-program
                               ((switching player individual1 individual2) :program)
-                              init-state)]
-          
+                              init-state-2)]
+          ;;(println (init-state-2 :input))
           ;;(print-board game-board)
           ;;(println checklist)
           ;;(println player)
@@ -945,7 +954,7 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
                 (and (win-check checklist player) (= player "***")) 1
                 :ELSE (recur game-board
                              (switch-player player "ooo" "***")
-                             init-state
+                             init-state-2
                              result-state-2
                              (peek-stack result-state :integer))))))))
   
