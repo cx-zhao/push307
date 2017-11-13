@@ -417,6 +417,26 @@
   (make-push-instruction state int-if-help [:bool :integer :integer] :integer))
 
 
+(defn exec_=_helper
+  "Pushes TRUE onto the BOOLEAN stack if the top two items on the EXEC stack are equal, or FALSE otherwise."
+  [exec1 exec2]
+  (= exec1 exec2))
+
+(defn exec_=
+  "placeholder"
+  [state]
+  (make-push-instruction state exec_=_helper [:exec :exec] :bool))
+
+
+(defn exec-do-range
+  "An iteration instruction that executes the top item on the EXEC stack a number of times that depends on the top two integers, while also pushing the loop counter onto the INTEGER stack for possible access during the execution of the body of the loop.
+
+  The top integer is the 'destination index' and the second integer is the 'current index.' First the code and the integer arguments are saved locally and popped. Then the integers are compared. If the integers are equal then the current index is pushed onto the INTEGER stack and the code (which is the 'body' of the loop) is pushed onto the EXEC stack for subsequent execution. If the integers are not equal then the current index will still be pushed onto the INTEGER stack but two items will be pushed onto the EXEC stack -- first a recursive call to EXEC.DO*RANGE (with the same code and destination index, but with a current index that has been either incremented or decremented by 1 to be closer to the destination index) and then the body code. Note that the range is inclusive of both endpoints."
+  [exec num1 num2]
+  (if (== num1 num2)
+    [exec num2]))
+
+
 (defn exec-dup-helper
   "Duplicates the top item on the EXEC stack. Does not pop its argument."
   [exec]
