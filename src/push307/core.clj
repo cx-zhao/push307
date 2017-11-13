@@ -24,6 +24,26 @@
    :bool '(true false)
    :input {:in1 4 :in2 6}})
 
+(def example-push-state-2
+  {:exec '(integer_+ integer_-)
+   :integer '(1 2 3 4 5 6 7)
+   :string '("***" "ooo")
+   :bool '(true false)
+   :game-state '([["***"]
+   ["***""ooo""***""***""***""***"]
+   ["ooo""ooo""ooo""ooo"]
+   []
+   []
+   []
+   ["***""ooo"]])
+   :input {:in1 [["***"]
+   ["***""ooo""***""***""***""***"]
+   ["ooo""ooo""ooo""ooo"]
+   []
+   []
+   []
+   ["***""ooo"]] :in2 "***" :in3 "ooo"}})
+
 ; An example Push program
 (def example-push-program
   '(3 5 integer_* "hello" 4 "world" integer_-))
@@ -45,6 +65,8 @@
 (def instructions
   (list
    'in1
+   'in2
+   'in3
    'integer_+
    'integer_-
    'integer_*
@@ -65,12 +87,15 @@
    'boolean-rand
    'boolean-swap
    'int-if
+   'exec_=
    'exec-dup
    'exec-if
    'exec-swap
    'exec-while
+   'check-col-top
    0
    1
+   2
    true
    false
    ))
@@ -181,10 +206,16 @@
   (push-to-stack state :exec ((state :input) :in1)))
 
 (defn in2
-  "Pushes the input labeled :in1 on the inputs map onto the :exec stack.
+  "Pushes the input labeled :in3 on the inputs map onto the :exec stack.
   Can't use make-push-instruction, since :input isn't a stack, but a map."
   [state]
   (push-to-stack state :exec ((state :input) :in2)))
+
+(defn in3
+  "Pushes the input labeled :in3 on the inputs map onto the :exec stack.
+  Can't use make-push-instruction, since :input isn't a stack, but a map."
+  [state]
+  (push-to-stack state :exec ((state :input) :in3)))
 
 
 (defn integer_+
@@ -411,7 +442,7 @@
   (make-push-instruction-list state boolean-swap-helper [:bool :bool] [:bool :bool]))
 
 
-(defn int-if-help
+(defn int-if-helper
   "Takes in a bool and two integers and returns one of the integers depending on the bool value."
   [bool int1 int2]
   (if bool
@@ -421,7 +452,7 @@
 (defn int-if
   "Make a basic if push instruction with ints."
   [state]
-  (make-push-instruction state int-if-help [:bool :integer :integer] :integer))
+  (make-push-instruction state int-if-helper [:bool :integer :integer] :integer))
 
 
 (defn exec_=_helper
@@ -435,15 +466,6 @@
   (make-push-instruction state exec_=_helper [:exec :exec] :bool))
 
 
-(defn exec-do-range
-  "An iteration instruction that executes the top item on the EXEC stack a number of times that depends on the top two integers, while also pushing the loop counter onto the INTEGER stack for possible access during the execution of the body of the loop.
-
-  The top integer is the 'destination index' and the second integer is the 'current index.' First the code and the integer arguments are saved locally and popped. Then the integers are compared. If the integers are equal then the current index is pushed onto the INTEGER stack and the code (which is the 'body' of the loop) is pushed onto the EXEC stack for subsequent execution. If the integers are not equal then the current index will still be pushed onto the INTEGER stack but two items will be pushed onto the EXEC stack -- first a recursive call to EXEC.DO*RANGE (with the same code and destination index, but with a current index that has been either incremented or decremented by 1 to be closer to the destination index) and then the body code. Note that the range is inclusive of both endpoints."
-  [exec num1 num2]
-  (if (== num1 num2)
-    [exec num2]))
-
-
 (defn exec-dup-helper
   "Duplicates the top item on the EXEC stack. Does not pop its argument."
   [exec]
@@ -455,7 +477,7 @@
   (make-push-instruction-list state exec-dup-helper [:exec] [:exec :exec]))
 
 
-(defn exec-if-help
+(defn exec-if-helper
   "If the top item of the BOOLEAN stack is TRUE then this removes the second item on the EXEC stack, leaving the first item to be executed. If it is false then it removes the first item, leaving the second to be executed."
   [bool exec1 exec2]
   (if bool
@@ -465,7 +487,7 @@
 (defn exec-if
   "Make a basic if push instruction with exec instructions."
   [state]
-  (make-push-instruction state exec-if-help [:bool :exec :exec] :exec))
+  (make-push-instruction state exec-if-helper [:bool :exec :exec] :exec))
 
 
 (defn exec-swap-helper
@@ -478,20 +500,35 @@
   [state]
   (make-push-instruction-list state exec-swap-helper [:exec :exec] [:exec :exec]))
 
+
 (defn fill-in-blank
   [state]
   state)
 
 (defn exec-while-helper
+  "Custom while loop"
   [exec integer]
-  (if (> integer 0)
+  (if (> (dec integer) 0)
     [exec 'exec-while (dec integer) exec]
-    [fill-in-blank fill-in-blank fill-in-blank exec]))
+    [exec 'fill-in-blank 'fill-in-blank 'fill-in-blank]))
 
 (defn exec-while
   [state]
   (make-push-instruction-list state exec-while-helper [:exec :integer] [:exec :exec :exec :exec]))
 
+
+(defn check-col-top-helper
+  "Returns true if the top piece in the column is the player's own piece, else returns false if it is the opponent's piece. If the column is empty, return false."
+  [game-state num string]
+  (let [col (get game-state (mod num 7))]
+    (if (empty? col)
+      false
+      (= string (get col (dec (count col)))))))
+
+(defn check-col-top
+  "placeholder"
+  [state]
+  (make-push-instruction state check-col-top-helper [:game-state :integer :string] :bool))
 
 
 ;;;;;;;;;;
