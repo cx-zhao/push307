@@ -18,8 +18,8 @@
 
 ; An example Push state
 (def example-push-state
-  {:exec '(integer_+ integer_-)
-   :integer '(1 2 3 4 5 6 7)
+  {:exec '(integer_+)
+   :integer '(3 1 2 3 4 5 6 7)
    :string '("abc" "def")
    :bool '(true false)
    :input {:in1 4 :in2 6}})
@@ -27,6 +27,9 @@
 ; An example Push program
 (def example-push-program
   '(3 5 integer_* "hello" 4 "world" integer_-))
+
+(def example-push-program-2
+  '(exec-while))
 
 ; An example individual in the population
 ; Made of a map containing, at mimimum, a program, the errors for
@@ -65,9 +68,9 @@
    'exec-dup
    'exec-if
    'exec-swap
+   'exec-while
    0
    1
-   2
    true
    false
    ))
@@ -449,17 +452,20 @@
   [state]
   (make-push-instruction-list state exec-swap-helper [:exec :exec] [:exec :exec]))
 
-
-;; remove later, just for testing
-(defn test-helper
-  [a]
-  [1 "ert" 3 4 "asd" integer_+])
-
-
-;; remove later, just for testing
-(defn test1
+(defn fill-in-blank
   [state]
-  (make-push-instruction-list state test-helper [:integer] [:integer :string :integer :integer :string :exec]))
+  state)
+
+(defn exec-while-helper
+  [exec integer]
+  (if (> integer 0)
+    [exec 'exec-while (dec integer) exec]
+    [fill-in-blank fill-in-blank fill-in-blank exec]))
+
+(defn exec-while
+  [state]
+  (make-push-instruction-list state exec-while-helper [:exec :integer] [:exec :exec :exec :exec]))
+
 
 
 ;;;;;;;;;;
@@ -526,8 +532,6 @@
    :errors []
    :total-error 0})
 
-(def x (make-random-individual instructions 50))
-(def y (make-random-individual instructions 50))
 
 (defn tournament-selection
   "Selects an individual from the population using a tournament of size 5.
@@ -1017,8 +1021,6 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
   (if (< x 0)
     (* -1 x)
     x))
-
-; A list of test inputs: '(-5 -4 -3 -2 -1 0 1 2 3 4 5)
 
 
 ;;;;;;;;;;
