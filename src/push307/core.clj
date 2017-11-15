@@ -487,6 +487,28 @@
   (make-push-instruction state boolean_=_helper [:bool :bool] :bool))
 
 
+(defn boolean-and-helper
+  "Pushes the logical AND of the top two BOOLEANs."
+  [bool1 bool2]
+  (and bool1 bool2))
+
+(defn boolean-and
+  "placeholder"
+  [state]
+  (make-push-instruction state boolean-and-helper [:bool :bool] :bool))
+
+
+(defn boolean-or-helper
+  "Pushes the logical OR of the top two BOOLEANs."
+  [bool1 bool2]
+  (or bool1 bool2))
+
+(defn boolean-or
+  "placeholder"
+  [state]
+  (make-push-instruction state boolean-and-helper [:bool :bool] :bool))
+
+
 (defn boolean-dup-helper
   "Duplicates the top item on the BOOLEAN stack. Does not pop its argument."
   [bool]
@@ -513,13 +535,13 @@
 
 (defn boolean-rand-helper
   "Pushes a newly generated random integer that is greater than or equal to min-random-integer and less than or equal to max-random-integer."
-  [x]
+  []
   (rand-nth [true false]))
 
 (defn boolean-rand
-  "how to not pop anything and just push number?"
+  "placeholder"
   [state]
-  (make-push-instruction state boolean-rand-helper [:bool] :bool))
+  (make-push-instruction state boolean-rand-helper [] :bool))
 
 
 (defn boolean-swap-helper
@@ -611,6 +633,17 @@
 (defn exec-while
   [state]
   (make-push-instruction-list state exec-while-helper [:exec :integer] [:exec :exec :exec :exec]))
+
+
+(defn piece-rand-helper
+  "Pushes a random game piece onto the string stack."
+  []
+  (rand-nth ["***" "ooo"]))
+
+(defn piece-rand
+  "placeholder"
+  [state]
+  (make-push-instruction state boolean-rand-helper [] :string))
 
 
 (defn check-col-top-helper
