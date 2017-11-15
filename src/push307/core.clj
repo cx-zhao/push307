@@ -93,6 +93,8 @@
    'exec-swap
    'exec-while
    'check-col-top
+   'get-a-piece
+   'fake-step-win-checker
    0
    1
    2
@@ -519,8 +521,8 @@
 
 (defn check-col-top-helper
   "Returns true if the top piece in the column is the player's own piece, else returns false if it is the opponent's piece. If the column is empty, return false."
-  [game-state num string]
-  (let [col (get game-state (mod num 7))]
+  [game-board num string]
+  (let [col (get game-board (mod num 7))]
     (if (empty? col)
       false
       (= string (get col (dec (count col)))))))
@@ -531,6 +533,36 @@
   (make-push-instruction state check-col-top-helper [:game-state :integer :string] :bool))
 
 
+(defn get-a-piece-helper
+  "Returns the piece at column c, row r on the board. If there is not a piece at the location, return an empty string."
+  [game-board c r]
+  (let [col (get game-board (mod c 7))
+        piece (get col (mod r 6))]
+    (if (= nil piece)
+      ""
+      piece)))
+
+
+(defn get-a-piece
+  "placeholder"
+  [state]
+  (make-push-instruction state get-a-piece-helper [:game-state :integer :integer] :string))
+
+
+(defn fake-step-win-checker-helper
+  "Returns the max number of adjacent pieces at column c row r"
+  [game-board c]
+  (let [colnum (next-avail-col game-board c)
+        board-o (play-a-step game-board  "ooo" colnum)
+        board-* (play-a-step game-board  "***" colnum)
+        checklist-o (check board-o colnum)
+        checklist-* (check board-* colnum)]
+    (or (win-check checklist-o "ooo")
+        (win-check checklist-* "***"))))
+
+(defn fake-step-win-checker
+  [state]
+  (make-push-instruction state fake-step-win-checker-helper [:game-state :integer] :bool))
 ;;;;;;;;;;
 ;; Interpreter
 (defn interpret-one-step
