@@ -170,6 +170,9 @@
    'boolean-from-integer
    'boolean-rand
    'boolean-swap
+   'boolean-and
+   'boolean-or
+   'piece-rand
    'int-if
    'exec_=
    'exec-dup
