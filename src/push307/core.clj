@@ -26,20 +26,20 @@
 
 (def example-push-state-2
   {:exec '(integer_+ integer_-)
-   :integer '(1 2 3 4 5 6 7)
-   :string '("***" "ooo")
+   :integer '(0 1 2 3 4 5 6 7)
+   :string '("ooo" "***" "ooo")
    :bool '(true false)
    :game-state '([["***"]
    ["***""ooo""***""***""***""***"]
    ["ooo""ooo""ooo""ooo"]
-   []
+   ["ooo"]
    []
    []
    ["***""ooo"]])
    :input {:in1 [["***"]
    ["***""ooo""***""***""***""***"]
    ["ooo""ooo""ooo""ooo"]
-   []
+   ["ooo"]
    []
    []
    ["***""ooo"]] :in2 "***" :in3 "ooo"}})
@@ -125,12 +125,14 @@
       ;; check vertical
       (> index 2) (conj (subvec col (- (count col) 4)))
       ;; check horizontal to the left
-      (> colnum 2) (conj (vec (map #(get (get board (- colnum %)) index) (range 4))))
+      (> colnum 2) (conj (vec (map #(get (get board (- colnum %)) index)
+                                   (range 4))))
       ;; check horizontal to the right
-      (< colnum 4) (conj (vec (map #(get (get board (+ colnum %)) index) (range 4))))
+      (< colnum 4) (conj (vec (map #(get (get board (+ colnum %)) index)
+                                   (range 4))))
       ;; check diagonal, to top right
       (and (< index 3) (< colnum 4)) (conj (vec (map #(get (get board (+ colnum %))
-                                                           (+ index %)) (range 4))))
+                                                      (+ index %)) (range 4))))
       ;; check diagonal, to bottom left
       (and (> index 2) (> colnum 2)) (conj (vec (map #(get (get board (- colnum %))
                                                            (- index %)) (range 4))))
@@ -168,6 +170,9 @@
    'boolean-from-integer
    'boolean-rand
    'boolean-swap
+   'boolean-and
+   'boolean-or
+   'piece-rand
    'int-if
    'exec_=
    'exec-dup
@@ -175,8 +180,13 @@
    'exec-swap
    'exec-while
    'check-col-top
+   'check-col-top-2
    'get-a-piece
    'fake-step-win-checker
+   'check-right
+   'check-right-2
+   'check-left
+   'check-left-2
    0
    1
    2
@@ -614,9 +624,14 @@
 (defn exec-while-helper
   "Custom while loop"
   [exec integer]
-  (if (> (dec integer) 0)
+  (cond
+    (<= integer 0) ['fill-in-blank 'fill-in-blank 'fill-in-blank 'fill-in-blank]
+    (= integer 1) [exec 'fill-in-blank 'fill-in-blank 'fill-in-blank]
+    :ELSE [exec 'exec-while (dec integer) exec]))
+        
+"  (if (> (dec integer) 0)
     [exec 'exec-while (dec integer) exec]
-    [exec 'fill-in-blank 'fill-in-blank 'fill-in-blank]))
+    [exec 'fill-in-blank 'fill-in-blank 'fill-in-blank]))"
 
 (defn exec-while
   [state]
@@ -637,15 +652,113 @@
 (defn check-col-top-helper
   "Returns true if the top piece in the column is the player's own piece, else returns false if it is the opponent's piece. If the column is empty, return false."
   [game-board num string]
-  (let [col (get game-board (mod num 7))]
-    (if (empty? col)
-      false
-      (= string (get col (dec (count col)))))))
+  (if (full-board game-board)
+    false
+    (let [colnum (next-avail-col game-board num)
+          col (get game-board colnum)]
+      (if (empty? col)
+        false
+        (= string (get col (dec (count col))))))))
 
 (defn check-col-top
   "placeholder"
   [state]
   (make-push-instruction state check-col-top-helper [:game-state :integer :string] :bool))
+
+(defn check-col-top-2-helper
+  "Returns true if the top piece in the column is the player's own piece, else returns false if it is the opponent's piece. If the column is empty, return false."
+  [game-board num string]
+  (if (full-board game-board)
+    false
+    (let [colnum (next-avail-col game-board num)
+          col (get game-board colnum)]
+      (cond 
+        (> 2 (count col)) false
+        :else (and (= string (get game-board (dec (count col))))
+                   (= string (get game-board (- (count col) 2))))))))
+  
+(defn check-col-top-2
+  "placeholder"
+  [state]
+  (make-push-instruction state check-col-top-2-helper [:game-state :integer :string] :bool))
+
+(defn check-left-helper
+  "placeholder"
+  [game-board num string]
+  (cond
+    (full-board game-board) false
+    (= string "") false
+    (zero? (next-avail-col game-board num)) false
+    :else (let [colnum (next-avail-col game-board num)
+                col (get game-board colnum)
+                rownum (count col)
+                left-piece (get (get game-board (dec colnum)) rownum)]
+            (= left-piece string))))
+
+(defn check-left
+  [state]
+  (make-push-instruction state check-left-helper [:game-state :integer :string] :bool))
+
+
+(defn check-left-2-helper
+  "placeholder"
+  [game-board num string]
+  (cond
+    (full-board game-board) false
+    (= string "") false
+    (> 2 (next-avail-col game-board num)) false
+    :else (let [colnum (next-avail-col game-board num)
+                col (get game-board colnum)
+                rownum (count col)
+                left-col-1 (get game-board (dec colnum))
+                left-col-2 (get game-board (- colnum 2))
+                left-piece-1 (get left-col-1 rownum)
+                left-piece-2 (get left-col-2 rownum)]
+            (and (= left-piece-1 string) (= left-piece-2 string)))))
+
+
+(defn check-left-2
+  [state]
+  (make-push-instruction state check-left-2-helper [:game-state :integer :string] :bool))
+
+(defn check-right-helper
+  "placeholder"
+  [game-board num string]
+  (cond
+    (full-board game-board) false
+    (= string "") false
+    (= 6 (next-avail-col game-board num)) false
+    :else (let [colnum (next-avail-col game-board num)
+                col (get game-board colnum)
+                rownum (count col)
+                left-piece (get (get game-board (inc colnum)) rownum)]
+            (= left-piece string))))
+
+(defn check-right
+  [state]
+  (make-push-instruction state check-right-helper [:game-state :integer :string] :bool))
+
+
+(defn check-right-2-helper
+  "placeholder"
+  [game-board num string]
+  (cond
+    (full-board game-board) false
+    (= string "") false
+    (< 4 (next-avail-col game-board num)) false
+    :else (let [colnum (next-avail-col game-board num)
+                col (get game-board colnum)
+                rownum (count col)
+                right-col-1 (get game-board (inc colnum))
+                right-col-2 (get game-board (+ colnum 2))
+                right-piece-1 (get right-col-1 rownum)
+                right-piece-2 (get right-col-2 rownum)]
+            (and (= right-piece-1 string) (= right-piece-2 string)))))
+
+
+(defn check-right-2
+  [state]
+  (make-push-instruction state check-right-2-helper [:game-state :integer :string] :bool))
 
 
 (defn get-a-piece-helper
@@ -665,7 +778,7 @@
 
 
 (defn fake-step-win-checker-helper
-  "Returns the max number of adjacent pieces at column c row r"
+  "Returns true if place a piece at column c will lead to a win"
   [game-board c]
   (if (full-board game-board)
     false
@@ -1085,7 +1198,7 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
   
 (defn generate-random-index
   []
-  (range 50))
+  (range 100))
 
 (def test-case-0
   {:program '(0) :errors [] :total-error 0})
