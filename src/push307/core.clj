@@ -59,6 +59,88 @@
    :errors [8 7 6 5 4 3 2 1 0 1]
    :total-error 37})
 
+;;-----------------------------------
+;; game setup
+(def empty-board
+  [[][][][][][][]])
+
+(def example-board
+  [["***"]
+   ["***""ooo""***""***""***""***"]
+   ["ooo""ooo""ooo""ooo"]
+   []
+   []
+   []
+   ["***""ooo"]])
+
+(defn print-board
+  "Print a game board"
+  [board]
+  (loop [index 5]
+    (apply print (map #(get % index) board))
+    (println)
+    (if (< index 1)
+      nil
+      (recur (dec index)))))
+
+;; test
+;;(print-board example-board)
+
+(defn initialize-board
+  []
+  empty-board)
+
+(defn check-availability
+  [board col]
+  (< (count (get board (mod col 7))) 6))
+
+(defn full-board
+  [board]
+  (empty? (filter #(check-availability board %) (range 7))))
+                                       
+(defn next-avail-col
+  [board col]
+  (first (filter #(check-availability board %)
+                 (map #(mod % 7) (range col (+ col 7))))))
+
+(defn play-a-step
+  [board disc col]
+  (let [colnum (next-avail-col board col)]
+    ;;(println colnum)
+    (update board colnum #(conj % disc))))
+
+;; test
+;;(print-board (play-a-step example-board "***" 1))
+
+(defn win-check
+  [checklist disc]
+  (not= (count (filter #(= [disc disc disc disc] %) checklist)) 0))
+
+(defn check
+  [board colnum]
+  (let [col (get board colnum)
+        index (dec (count col))]
+    ;; (print-board board)
+    (cond-> []
+      ;; check vertical
+      (> index 2) (conj (subvec col (- (count col) 4)))
+      ;; check horizontal to the left
+      (> colnum 2) (conj (vec (map #(get (get board (- colnum %)) index) (range 4))))
+      ;; check horizontal to the right
+      (< colnum 4) (conj (vec (map #(get (get board (+ colnum %)) index) (range 4))))
+      ;; check diagonal, to top right
+      (and (< index 3) (< colnum 4)) (conj (vec (map #(get (get board (+ colnum %))
+                                                           (+ index %)) (range 4))))
+      ;; check diagonal, to bottom left
+      (and (> index 2) (> colnum 2)) (conj (vec (map #(get (get board (- colnum %))
+                                                           (- index %)) (range 4))))
+      ;;check diagonal, to top left
+      (and (< index 3) (> colnum 2)) (conj (vec (map #(get (get board (- colnum %))
+                                                           (+ index %)) (range 4))))
+      ;; check diagonal, to bottom right
+      (and (> index 2) (< colnum 4)) (conj (vec (map #(get (get board (+ colnum %))
+                                                           (- index %)) (range 4)))))))
+
 ;;;;;;;;;;
 ;; Instructions must all be either functions that take one Push
 ;; state and return another or constant literals.
@@ -93,6 +175,8 @@
    'exec-swap
    'exec-while
    'check-col-top
+   'get-a-piece
+   'fake-step-win-checker
    0
    1
    2
@@ -519,8 +603,8 @@
 
 (defn check-col-top-helper
   "Returns true if the top piece in the column is the player's own piece, else returns false if it is the opponent's piece. If the column is empty, return false."
-  [game-state num string]
-  (let [col (get game-state (mod num 7))]
+  [game-board num string]
+  (let [col (get game-board (mod num 7))]
     (if (empty? col)
       false
       (= string (get col (dec (count col)))))))
@@ -531,6 +615,38 @@
   (make-push-instruction state check-col-top-helper [:game-state :integer :string] :bool))
 
 
+(defn get-a-piece-helper
+  "Returns the piece at column c, row r on the board. If there is not a piece at the location, return an empty string."
+  [game-board c r]
+  (let [col (get game-board (mod c 7))
+        piece (get col (mod r 6))]
+    (if (= nil piece)
+      ""
+      piece)))
+
+
+(defn get-a-piece
+  "placeholder"
+  [state]
+  (make-push-instruction state get-a-piece-helper [:game-state :integer :integer] :string))
+
+
+(defn fake-step-win-checker-helper
+  "Returns the max number of adjacent pieces at column c row r"
+  [game-board c]
+  (if (full-board game-board)
+    false
+    (let [colnum (next-avail-col game-board c)
+          board-o (play-a-step game-board  "ooo" colnum)
+          board-* (play-a-step game-board  "***" colnum)
+          checklist-o (check board-o colnum)
+          checklist-* (check board-* colnum)]
+      (or (win-check checklist-o "ooo")
+          (win-check checklist-* "***")))))
+
+(defn fake-step-win-checker
+  [state]
+  (make-push-instruction state fake-step-win-checker-helper [:game-state :integer] :bool))
 ;;;;;;;;;;
 ;; Interpreter
 (defn interpret-one-step
@@ -855,87 +971,6 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
   []
   (rand-nth (range 7)))
 
-;;-----------------------------------
-;; game setup
-(def empty-board
-  [[][][][][][][]])
-
-(def example-board
-  [["***"]
-   ["***""ooo""***""***""***""***"]
-   ["ooo""ooo""ooo""ooo"]
-   []
-   []
-   []
-   ["***""ooo"]])
-
-(defn print-board
-  "Print a game board"
-  [board]
-  (loop [index 5]
-    (apply print (map #(get % index) board))
-    (println)
-    (if (< index 1)
-      nil
-      (recur (dec index)))))
-
-;; test
-;;(print-board example-board)
-
-(defn initialize-board
-  []
-  empty-board)
-
-(defn check-availability
-  [board col]
-  (< (count (get board (mod col 7))) 6))
-
-(defn full-board
-  [board]
-  (empty? (filter #(check-availability board %) (range 7))))
-                                       
-(defn next-avail-col
-  [board col]
-  (first (filter #(check-availability board %)
-                 (map #(mod % 7) (range col (+ col 7))))))
-
-(defn play-a-step
-  [board disc col]
-  (let [colnum (next-avail-col board col)]
-    ;;(println colnum)
-    (update board colnum #(conj % disc))))
-
-;; test
-;;(print-board (play-a-step example-board "***" 1))
-
-(defn win-check
-  [checklist disc]
-  (not= (count (filter #(= [disc disc disc disc] %) checklist)) 0))
-
-(defn check
-  [board colnum]
-  (let [col (get board colnum)
-        index (dec (count col))]
-    ;; (print-board board)
-    (cond-> []
-      ;; check vertical
-      (> index 2) (conj (subvec col (- (count col) 4)))
-      ;; check horizontal to the left
-      (> colnum 2) (conj (vec (map #(get (get board (- colnum %)) index) (range 4))))
-      ;; check horizontal to the right
-      (< colnum 4) (conj (vec (map #(get (get board (+ colnum %)) index) (range 4))))
-      ;; check diagonal, to top right
-      (and (< index 3) (< colnum 4)) (conj (vec (map #(get (get board (+ colnum %))
-                                                           (+ index %)) (range 4))))
-      ;; check diagonal, to bottom left
-      (and (> index 2) (> colnum 2)) (conj (vec (map #(get (get board (- colnum %))
-                                                           (- index %)) (range 4))))
-      ;;check diagonal, to top left
-      (and (< index 3) (> colnum 2)) (conj (vec (map #(get (get board (- colnum %))
-                                                           (+ index %)) (range 4))))
-      ;; check diagonal, to bottom right
-      (and (> index 2) (< colnum 4)) (conj (vec (map #(get (get board (+ colnum %))
-                                                           (- index %)) (range 4)))))))
 
 (defn switch-player
   [player p1 p2]
