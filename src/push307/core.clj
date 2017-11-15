@@ -552,13 +552,15 @@
 (defn fake-step-win-checker-helper
   "Returns the max number of adjacent pieces at column c row r"
   [game-board c]
-  (let [colnum (next-avail-col game-board c)
-        board-o (play-a-step game-board  "ooo" colnum)
-        board-* (play-a-step game-board  "***" colnum)
-        checklist-o (check board-o colnum)
-        checklist-* (check board-* colnum)]
-    (or (win-check checklist-o "ooo")
-        (win-check checklist-* "***"))))
+  (if (full-board game-board)
+    false
+    (let [colnum (next-avail-col game-board c)
+          board-o (play-a-step game-board  "ooo" colnum)
+          board-* (play-a-step game-board  "***" colnum)
+          checklist-o (check board-o colnum)
+          checklist-* (check board-* colnum)]
+      (or (win-check checklist-o "ooo")
+          (win-check checklist-* "***")))))
 
 (defn fake-step-win-checker
   [state]
