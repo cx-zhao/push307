@@ -59,6 +59,88 @@
    :errors [8 7 6 5 4 3 2 1 0 1]
    :total-error 37})
 
+;;-----------------------------------
+;; game setup
+(def empty-board
+  [[][][][][][][]])
+
+(def example-board
+  [["***"]
+   ["***""ooo""***""***""***""***"]
+   ["ooo""ooo""ooo""ooo"]
+   []
+   []
+   []
+   ["***""ooo"]])
+
+(defn print-board
+  "Print a game board"
+  [board]
+  (loop [index 5]
+    (apply print (map #(get % index) board))
+    (println)
+    (if (< index 1)
+      nil
+      (recur (dec index)))))
+
+;; test
+;;(print-board example-board)
+
+(defn initialize-board
+  []
+  empty-board)
+
+(defn check-availability
+  [board col]
+  (< (count (get board (mod col 7))) 6))
+
+(defn full-board
+  [board]
+  (empty? (filter #(check-availability board %) (range 7))))
+                                       
+(defn next-avail-col
+  [board col]
+  (first (filter #(check-availability board %)
+                 (map #(mod % 7) (range col (+ col 7))))))
+
+(defn play-a-step
+  [board disc col]
+  (let [colnum (next-avail-col board col)]
+    ;;(println colnum)
+    (update board colnum #(conj % disc))))
+
+;; test
+;;(print-board (play-a-step example-board "***" 1))
+
+(defn win-check
+  [checklist disc]
+  (not= (count (filter #(= [disc disc disc disc] %) checklist)) 0))
+
+(defn check
+  [board colnum]
+  (let [col (get board colnum)
+        index (dec (count col))]
+    ;; (print-board board)
+    (cond-> []
+      ;; check vertical
+      (> index 2) (conj (subvec col (- (count col) 4)))
+      ;; check horizontal to the left
+      (> colnum 2) (conj (vec (map #(get (get board (- colnum %)) index) (range 4))))
+      ;; check horizontal to the right
+      (< colnum 4) (conj (vec (map #(get (get board (+ colnum %)) index) (range 4))))
+      ;; check diagonal, to top right
+      (and (< index 3) (< colnum 4)) (conj (vec (map #(get (get board (+ colnum %))
+                                                           (+ index %)) (range 4))))
+      ;; check diagonal, to bottom left
+      (and (> index 2) (> colnum 2)) (conj (vec (map #(get (get board (- colnum %))
+                                                           (- index %)) (range 4))))
+      ;;check diagonal, to top left
+      (and (< index 3) (> colnum 2)) (conj (vec (map #(get (get board (- colnum %))
+                                                           (+ index %)) (range 4))))
+      ;; check diagonal, to bottom right
+      (and (> index 2) (< colnum 4)) (conj (vec (map #(get (get board (+ colnum %))
+                                                           (- index %)) (range 4)))))))
+
 ;;;;;;;;;;
 ;; Instructions must all be either functions that take one Push
 ;; state and return another or constant literals.
@@ -889,87 +971,6 @@ Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
   []
   (rand-nth (range 7)))
 
-;;-----------------------------------
-;; game setup
-(def empty-board
-  [[][][][][][][]])
-
-(def example-board
-  [["***"]
-   ["***""ooo""***""***""***""***"]
-   ["ooo""ooo""ooo""ooo"]
-   []
-   []
-   []
-   ["***""ooo"]])
-
-(defn print-board
-  "Print a game board"
-  [board]
-  (loop [index 5]
-    (apply print (map #(get % index) board))
-    (println)
-    (if (< index 1)
-      nil
-      (recur (dec index)))))
-
-;; test
-;;(print-board example-board)
-
-(defn initialize-board
-  []
-  empty-board)
-
-(defn check-availability
-  [board col]
-  (< (count (get board (mod col 7))) 6))
-
-(defn full-board
-  [board]
-  (empty? (filter #(check-availability board %) (range 7))))
-                                       
-(defn next-avail-col
-  [board col]
-  (first (filter #(check-availability board %)
-                 (map #(mod % 7) (range col (+ col 7))))))
-
-(defn play-a-step
-  [board disc col]
-  (let [colnum (next-avail-col board col)]
-    ;;(println colnum)
-    (update board colnum #(conj % disc))))
-
-;; test
-;;(print-board (play-a-step example-board "***" 1))
-
-(defn win-check
-  [checklist disc]
-  (not= (count (filter #(= [disc disc disc disc] %) checklist)) 0))
-
-(defn check
-  [board colnum]
-  (let [col (get board colnum)
-        index (dec (count col))]
-    ;; (print-board board)
-    (cond-> []
-      ;; check vertical
-      (> index 2) (conj (subvec col (- (count col) 4)))
-      ;; check horizontal to the left
-      (> colnum 2) (conj (vec (map #(get (get board (- colnum %)) index) (range 4))))
-      ;; check horizontal to the right
-      (< colnum 4) (conj (vec (map #(get (get board (+ colnum %)) index) (range 4))))
-      ;; check diagonal, to top right
-      (and (< index 3) (< colnum 4)) (conj (vec (map #(get (get board (+ colnum %))
-                                                           (+ index %)) (range 4))))
-      ;; check diagonal, to bottom left
-      (and (> index 2) (> colnum 2)) (conj (vec (map #(get (get board (- colnum %))
-                                                           (- index %)) (range 4))))
-      ;;check diagonal, to top left
-      (and (< index 3) (> colnum 2)) (conj (vec (map #(get (get board (- colnum %))
-                                                           (+ index %)) (range 4))))
-      ;; check diagonal, to bottom right
-      (and (> index 2) (< colnum 4)) (conj (vec (map #(get (get board (+ colnum %))
-                                                           (- index %)) (range 4)))))))
 
 (defn switch-player
   [player p1 p2]
