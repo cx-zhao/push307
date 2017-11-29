@@ -26,10 +26,10 @@
    :input {:in1 4 :in2 6}})
 
 (def example-push-state-2
-  {:exec '(integer_+ integer_-)
-   :integer '(0 1 2 3 4 5 6 7)
-   :string '("ooo" "***" "ooo")
-   :bool '(true false)
+  {:exec '()
+   :integer '(1 2 3)
+   :string '()
+   :bool '()
    :game-state '([["***"]
                   ["***""ooo""***""***""***""***"]
                   ["ooo""ooo""ooo""ooo"]
@@ -56,9 +56,13 @@
 ;; Made of a map containing, at mimimum, a program, the errors for
 ;; the program, and a total error
 (def example-individual
-  {:program '(3 5 integer_* "hello" 4 "world" integer_-)
-   :errors [8 7 6 5 4 3 2 1 0 1]
-   :total-error 37})
+  {:program
+   ;'(boolean-and integer-max int-if integer_% check-right-same boolean-rand exec-dup exec-swap 1 fake-step-win-checker integer_+ exec-if in1 exec_= integer-min integer_- false boolean-from-integer integer_< integer_< integer-min check-col-top check-col-top check-left-2 check-diag-left 2 boolean-and exec-swap check-col-top true)
+   ;'(exec-if get-a-piece exec-dup check-diag-left int-if boolean_= in1 integer_* exec-dup integer-max check-col-top-2 2 integer_%)
+   '(check-right-same integer_+ fake-step-win-checker 2 exec-if integer-dup exec_= check-col-top-2 check-right-2 check-right-same integer-rand 1 integer_> get-a-piece in1 check-right-same int-if exec-if boolean-dup boolean-or exec-swap piece-rand 2 check-right-same check-col-top check-right-same true check-left-same in1)
+
+   :errors []
+   :total-error 0})
 
 ;;-----------------------------------
 ;; game setup
@@ -113,11 +117,11 @@
 ;; test
 ;;(print-board (play-a-step example-board "***" 1))
 
-(defn win-check
+(defn check
   [checklist disc]
   (not= (count (filter #(= [disc disc disc disc] %) checklist)) 0))
 
-(defn check
+(defn check-vector
   [board colnum]
   (let [col (get board colnum)
         index (dec (count col))]
@@ -143,6 +147,49 @@
       ;; check diagonal, to bottom right
       (and (> index 2) (< colnum 4)) (conj (vec (map #(get (get board (+ colnum %))
                                                            (- index %)) (range 4)))))))
+
+
+
+(defn check-helper
+  [board colnum rownum]
+  (let [col (get board colnum)
+        index rownum]
+    ;; (print-board board)
+    (cond-> []
+      ;; check vertical
+      (> index 2) (conj (vec (map #(get col (- (count col) %)) (range 4))))
+      ;; chexmapeck horizontal to the left
+      (> colnum 2) (conj (vec (map #(get (get board (- colnum %)) index)
+                                   (range 4))))
+      ;; check horizontal to the right
+      (< colnum 4) (conj (vec (map #(get (get board (+ colnum %)) index)
+                                   (range 4))))
+      ;; check diagonal, to top right
+      (and (< index 3) (< colnum 4)) (conj (vec (map #(get (get board (+ colnum %))
+                                                           (+ index %)) (range 4))))
+      ;; check diagonal, to bottom left
+      (and (> index 2) (> colnum 2)) (conj (vec (map #(get (get board (- colnum %))
+                                                           (- index %)) (range 4))))
+      ;; check diagonal, to top left
+      (and (< index 3) (> colnum 2)) (conj (vec (map #(get (get board (- colnum %))
+                                                           (+ index %)) (range 4))))
+      ;; check diagonal, to bottom right
+      (and (> index 2) (< colnum 4)) (conj (vec (map #(get (get board (+ colnum %))
+                                                          (- index %)) (range 4)))))))
+
+
+(defn win-check
+  [board disc]
+  (loop [index-num 0]
+    (if (>= index-num 42)
+      false
+      (let [colnum (mod index-num 7)
+            rownum (quot index-num 7)]
+        ;(println colnum)
+        ;(println rownum)
+        (if (check (check-helper board colnum rownum) disc)
+          true
+          (recur (inc index-num)))))))
 
 ;;;;;;;;;;
 ;; Instructions must all be either functions that take one Push
@@ -890,10 +937,10 @@
     (let [colnum (next-avail-col game-board c)
           board-o (play-a-step game-board  "ooo" colnum)
           board-* (play-a-step game-board  "***" colnum)
-          checklist-o (check board-o colnum)
-          checklist-* (check board-* colnum)]
-      [c (or (win-check checklist-o "ooo")
-           (win-check checklist-* "***")) game-board])))
+          checklist-o (check-vector board-o colnum)
+          checklist-* (check-vector board-* colnum)]
+      [c (or (check checklist-o "ooo")
+           (check checklist-* "***")) game-board])))
 
 (defn fake-step-win-checker
   [state]
@@ -1392,12 +1439,16 @@
   ;; result-state is the state after interpreting the push program of the
   ;; individual over the init-state
   ;; output is the integer on top of the integer stack in the result state.
+
   (loop [init-board empty-board
          player "ooo"
          init-state (assoc empty-push-state :input {:in1 init-board :in2 "ooo" :in3 "***"} :game-state (list init-board))
          result-state (interpret-push-program (individual1 :program) init-state)
          step (peek-stack result-state :integer)]
 
+    ;;(print-board init-board)
+    ;;(println player)
+    ;;(println step)
     ;; Note that if the program does not have any output,
     ;; returns a penalty error of 1000.
     ;; if the game-board is full, return 1, fail to win
@@ -1409,7 +1460,6 @@
           (let [step (rand-int 7)
                 colnum (next-avail-col init-board step)
                 game-board (play-a-step init-board player step)
-                checklist (check game-board colnum)
                 init-state-2 (assoc empty-push-state
                                     :input {:in1 game-board
                                             :in2 "ooo"
@@ -1423,8 +1473,8 @@
             ;;(println checklist)
             ;;(println player)
             ;;(println)
-            (cond (and (win-check checklist player) (= player "ooo")) 0
-                  (and (win-check checklist player) (= player "***")) 1
+            (cond (and (win-check game-board player) (= player "ooo")) 0
+                  (and (win-check game-board player) (= player "***")) 1
                   :ELSE (recur game-board
                                "ooo"
                                init-state-2
@@ -1433,24 +1483,94 @@
         
         (let [colnum (next-avail-col init-board step)
               game-board (play-a-step init-board player step)
-              checklist (check game-board colnum)
               init-state-2 (assoc empty-push-state
                                   :input {:in1 game-board
                                           :in2 (switch-player player "ooo" "***")
                                           :in3 player}
-                                  :game-board (list game-board))
+                                  :game-state (list game-board))
               result-state-2 (interpret-push-program
                               ((switching player individual1 individual2) :program)
                               init-state-2)]
  
-          (cond (and (win-check checklist player) (= player "ooo")) 0
-                (and (win-check checklist player) (= player "***")) 1
+          (cond (and (win-check game-board player) (= player "ooo")) 0
+                (and (win-check game-board player) (= player "***")) 1
                 :ELSE (recur game-board
                              (switch-player player "ooo" "***")
                              init-state-2
                              result-state-2
                              (peek-stack result-state-2 :integer))))))))
 
+
+(defn mock-game
+  "Takes an individual, an individual input.
+  Returns absolute value of the difference (error)
+  between the output from the program and the desired output."
+  [individual1 individual2]
+  ;; init-state is an empty push state with :in1 = input value.
+  ;; result-state is the state after interpreting the push program of the
+  ;; individual over the init-state
+  ;; output is the integer on top of the integer stack in the result state.
+  (loop [init-board empty-board
+         player "ooo"
+         init-state (assoc empty-push-state :input {:in1 init-board :in2 "ooo" :in3 "***"} :game-state (list init-board))
+         result-state (interpret-push-program (individual1 :program) init-state)
+         step (peek-stack result-state :integer)]
+    (print-board init-board)
+    ;(println result-state)
+    ;(println init-state)
+    (println player)
+    (println step)
+    
+    ;; Note that if the program does not have any output,
+    ;; returns a penalty error of 1000.
+    ;; if the game-board is full, return 1, fail to win
+    (if (full-board init-board)
+      1
+      (if (= step :no-stack-item)
+        (if (= player "ooo")
+          1000
+          (let [step (rand-int 7)
+                colnum (next-avail-col init-board step)
+                game-board (play-a-step init-board player step)
+                init-state-2 (assoc empty-push-state
+                                    :input {:in1 game-board
+                                            :in2 "ooo"
+                                            :in3 "***"}
+                                    :game-state (list game-board))
+                result-state-2 (interpret-push-program
+                                ((switching player individual1 individual2) :program)
+                                init-state-2)]
+            ;;(println (init-state-2 :input))
+            ;;(print-board game-board)
+            ;;(println checklist)
+            ;;(println player)
+            ;;(println)
+            (cond (and (win-check game-board player) (= player "ooo")) 0
+                  (and (win-check game-board player) (= player "***")) 1
+                  :ELSE (recur game-board
+                               "ooo"
+                               init-state-2
+                               result-state-2
+                               (peek-stack result-state-2 :integer)))))
+        
+        (let [colnum (next-avail-col init-board step)
+              game-board (play-a-step init-board player step)
+              init-state-2 (assoc empty-push-state
+                                  :input {:in1 game-board
+                                          :in2 (switch-player player "ooo" "***")
+                                          :in3 player}
+                                  :game-state (list game-board))
+              result-state-2 (interpret-push-program
+                              ((switching player individual1 individual2) :program)
+                              init-state-2)]
+ 
+          (cond (and (win-check game-board player) (= player "ooo")) 0
+                (and (win-check game-board player) (= player "***")) 1
+                :ELSE (recur game-board
+                             (switch-player player "ooo" "***")
+                             init-state-2
+                             result-state-2
+                             (peek-stack result-state-2 :integer))))))))
 
 
 (defn generate-random-index
@@ -1503,6 +1623,8 @@
           test-case-5
           test-case-6
           test-case-7
+          test-case-7
+          test-case-7
           test-case-rand)))
 
 
@@ -1523,6 +1645,7 @@
   ;;(print (test-inputs population))
   (let [errors (map #(error-eval individual %) (test-inputs population))
         total-error (apply +' errors)]
+    (print errors)
     ;; update the error vector and total-error of the individual
     (assoc individual :errors errors :total-error total-error)))
 
