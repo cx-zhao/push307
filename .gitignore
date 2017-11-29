@@ -11,3 +11,9 @@ pom.xml.asc
 /.nrepl-port
 .hgignore
 .hg/
+
+output2
+
+test-no-in1
+
+test.txt
