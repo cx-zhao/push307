@@ -456,13 +456,12 @@
   "Pops an integer off of the top of the INTEGER stack.
   How to just pop something and return nothing to a stack?"
   [num]
-  nil)
+  [])
 
 (defn integer-pop
   "placeholder"
   [state]
-  (make-push-instruction state integer-pop-helper [:integer] :trash-stack))
-
+  (make-push-instruction-list state integer-pop-helper [:integer] []))
 
 (def min-random-integer 0)
 (def max-random-integer 9)
@@ -901,7 +900,21 @@
   (make-push-instruction-list state fake-step-win-checker-helper
                               [:game-state :integer]
                               [:integer :bool :game-state]))
-;;;;;;;;;;
+
+(defn step-helper
+  [game-board]
+  (loop [num 0]
+    (cond
+      (> num 6) (rand-int 7)
+      (get (fake-step-win-checker-helper game-board num) 1) num
+      :ELSE (recur (inc num)))))
+
+(defn step
+  [state]
+  (make-push-instruction state step-helper
+                         [:game-state] :integer))
+      
+ ;;;;;;;;;;
 ;; Interpreter
 (defn interpret-one-step
   "A helper function for interpret-push-program.
@@ -1401,7 +1414,7 @@
                                     :input {:in1 game-board
                                             :in2 "ooo"
                                             :in3 "***"}
-                                    :game-state (list init-board))
+                                    :game-state (list game-board))
                 result-state-2 (interpret-push-program
                                 ((switching player individual1 individual2) :program)
                                 init-state-2)]
@@ -1416,7 +1429,7 @@
                                "ooo"
                                init-state-2
                                result-state-2
-                               (peek-stack result-state :integer)))))
+                               (peek-stack result-state-2 :integer)))))
         
         (let [colnum (next-avail-col init-board step)
               game-board (play-a-step init-board player step)
@@ -1425,7 +1438,7 @@
                                   :input {:in1 game-board
                                           :in2 (switch-player player "ooo" "***")
                                           :in3 player}
-                                  :game-board (list init-board))
+                                  :game-board (list game-board))
               result-state-2 (interpret-push-program
                               ((switching player individual1 individual2) :program)
                               init-state-2)]
@@ -1436,13 +1449,13 @@
                              (switch-player player "ooo" "***")
                              init-state-2
                              result-state-2
-                             (peek-stack result-state :integer))))))))
+                             (peek-stack result-state-2 :integer))))))))
 
 
 
 (defn generate-random-index
   []
-  (range 100))
+  (range 50))
 
 (def test-case-0
   {:program '(0) :errors [] :total-error 0})
@@ -1465,6 +1478,9 @@
 (def test-case-6
   {:program '(6) :errors [] :total-error 0})
 
+(def test-case-7
+  {:program '(step) :errors [] :total-error 0})
+
 (def test-case-rand
   {:program '(integer-rand) :errors [] :total-error 0})
 
@@ -1486,6 +1502,7 @@
           test-case-4
           test-case-5
           test-case-6
+          test-case-7
           test-case-rand)))
 
 
@@ -1509,15 +1526,6 @@
     ;; update the error vector and total-error of the individual
     (assoc individual :errors errors :total-error total-error)))
 
-
-;;(game empty-board "***" "ooo")
-;;-------------------------------------
-(defn abs-val
-  "Returns the absolute value of the input number."
-  [x]
-  (if (< x 0)
-    (* -1 x)
-    x))
 
 
 ;;;;;;;;;;
