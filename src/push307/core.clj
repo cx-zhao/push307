@@ -66,7 +66,8 @@
 (def example-ind-2
    {:program
     ;'(true integer_> in1 exec-dup integer-max integer-from-boolean boolean-from-integer check-col-top-2 exec-swap 1 2 integer_+ integer_+ check-right integer_* integer-min check-right true integer-swap in1 get-a-piece exec_= integer_* integer_> integer-max check-right-same integer-min integer_> in1 check-right-2)
-    '(exec_= boolean-and check-left check-left in1 boolean-from-integer exec-dup check-right-2 integer-min check-diag-right in1 check-left-2 boolean-dup check-right-2 exec-if fake-step-win-checker exec-while integer-rand integer-swap integer-swap exec-dup fake-step-win-checker integer_% integer-max integer-from-boolean integer_+ in1 integer_+ check-right 0 in1 boolean-dup boolean-from-integer get-a-piece get-a-piece)
+ 
+    '(int-if check-left-2 check-diag-right-bottom-same integer_> in3 check-diag-right-bottom check-left check-diag-left-bottom 1 check-left-2 check-diag-left-bottom in1 in1 integer_> check-right-2 integer_+ check-diag-right-bottom-2 integer-pop boolean-dup integer-rand check-diag-left-bottom-2 in1)
     :errors[]
     :total-error 0})
 
@@ -119,7 +120,9 @@
   [board disc col]
   (let [colnum (next-avail-col board col)]
     ;;(println colnum)
-    (update board colnum #(conj % disc))))
+    (if (= colnum nil)
+      board
+      (update board colnum #(conj % disc)))))
 
 
 (defn switch-player
@@ -746,13 +749,13 @@
   "Returns true if the top piece in the column is the player's own piece, else returns false if it is the opponent's piece. If the column is empty, return false."
   [game-board num string]
   (if (full-board game-board)
-    [false]
+    [false game-board]
     (let [colnum (next-avail-col game-board num)
           col (get game-board colnum)]
       (cond
         (> 2 (count col)) [false game-board]
-        :ELSE [(and (= string (get game-board (dec (count col))))
-                    (= string (get game-board (- (count col) 2)))) game-board]))))
+        :ELSE [(and (= string (get col (dec (count col))))
+                    (= string (get col (- (count col) 2)))) game-board]))))
 
 (defn check-col-top-2
   "placeholder"
@@ -1180,7 +1183,65 @@
   (make-push-instruction state step-helper
                          [:game-state] :integer))
 
+(defn ultimate-win-piece-checker-helper
+  ""
+  [game-board game-piece]
+  (loop [col 0]
+    (cond
+      (> col 6) (rand-int 7)
+      (win-check (play-a-step game-board game-piece col) game-piece) col
+      :ELSE (recur (inc col)))))
 
+(defn ultimate-win-piece-checker
+  [state]
+  (make-push-instruction state ultimate-win-piece-checker-helper [:game-state :string] :integer))
+
+(defn ultimate-win-checker-helper
+  ""
+  [game-board]
+  (loop [col 0]
+    (cond
+      (> col 6) (rand-int 7)
+      (win-check (play-a-step game-board "ooo" col) "ooo") col
+      (win-check (play-a-step game-board "***" col) "***") col
+      :ELSE (recur (inc col)))))
+
+(defn ultimate-win-checker
+  [state]
+  (make-push-instruction state ultimate-win-checker-helper [:game-state] :integer))
+
+(defn best-player-helper
+  ""
+  [game-board opponent-game-piece own-game-piece]
+  (let [checklist1 (filter #(win-check (play-a-step game-board own-game-piece %) own-game-piece) (range 7))
+        checklist2 (filter #(win-check (play-a-step game-board opponent-game-piece %) opponent-game-piece) (range 7))]
+    (cond
+      (not (empty? checklist1)) (first checklist1)
+      (not (empty? checklist2)) (first checklist2)
+      
+      :else (loop [col 0]
+              (cond
+                (> col 6) (rand-int 7)
+                (get (check-col-top-2-helper game-board col own-game-piece) 0) col
+                (get (check-left-2-helper game-board col own-game-piece) 0) col
+                (get (check-right-2-helper game-board col own-game-piece) 0) col
+                (get (check-diag-left-bottom-2-helper game-board col own-game-piece) 0) col
+                (get (check-diag-left-top-2-helper game-board col own-game-piece) 0) col
+                (get (check-diag-right-top-2-helper game-board col own-game-piece) 0) col
+                (get (check-diag-right-bottom-2-helper game-board col own-game-piece) 0) col
+                (get (check-diag-left-bottom-helper game-board col own-game-piece) 0) col
+                (get (check-diag-left-top-helper game-board col own-game-piece) 0) col
+                (get (check-diag-right-top-helper game-board col own-game-piece) 0) col
+                (get (check-diag-right-bottom-helper game-board col own-game-piece) 0) col
+                (get (check-col-top-helper game-board col own-game-piece) 0) col
+                (get (check-left-helper game-board col own-game-piece) 0) col
+                (get (check-right-helper game-board col own-game-piece) 0) col
+                :ELSE (recur (inc col)))))))
+    
+(defn best-player
+  [state]
+  (make-push-instruction state best-player-helper [:game-state :string :string] :integer))
+      
  ;;;;;;;;;;
 ;; Interpreter
 (defn interpret-one-step
@@ -1326,9 +1387,9 @@
          result-state (interpret-push-program (individual2 :program) init-state)
          step (peek-stack result-state :integer)]
 
-    ;(print-board init-board)
-    ;(println player)
-    ;(println step)
+   ;(print-board init-board)
+   ;(println player)
+   ; (println step)
     ;; Note that if the program does not have any output,
     ;; returns a penalty error of 1000.
     ;; if the game-board is full, return 1, fail to win
@@ -1353,8 +1414,8 @@
             ;;(println checklist)
             ;;(println player)
             ;;(println)
-            (cond (and (win-check game-board player) (= player "ooo")) 0
-                  (and (win-check game-board player) (= player "***")) 1
+            (cond (and (win-check game-board player) (= player "***")) 0
+                  (and (win-check game-board player) (= player "ooo")) 1
                   :ELSE (recur game-board
                                "***"
                                init-state-2
@@ -1372,8 +1433,8 @@
                               ((switching player individual1 individual2) :program)
                               init-state-2)]
  
-          (cond (and (win-check game-board player) (= player "ooo")) 0
-                (and (win-check game-board player) (= player "***")) 1
+          (cond (and (win-check game-board player) (= player "***")) 0
+                (and (win-check game-board player) (= player "ooo")) 1
                 :ELSE (recur game-board
                              (switch-player player "ooo" "***")
                              init-state-2
@@ -1419,7 +1480,7 @@
                winner)))))
 
 
-(defn lexicase-selection
+(defn tournament-lexicase-selection
   "Selects an individual from the population using a tournament of size 5.
   Returned individual will be a parent in the next generation."
   [population case-list]
@@ -1433,7 +1494,7 @@
       ;;(println (count candidates))
       ;;(println (count cand-list))
       (cond
-        (empty? cand-list) (rand-nth candidates)
+        (empty? cand-list) (tournament-selection candidates)
         (= 1 (count cases)) (rand-nth cand-list)
         :ELSE (recur cand-list
                      (rest cases))))))
@@ -1520,7 +1581,7 @@
   (filter #(not (mutation-rate %)) prog))
 
 
-(defn select-and-vary-new
+(defn select-and-vary-old
   "Selects parent(s) from population using tournament selection of size 5
   and varies them, returning a child individual (note: not program).
   Chooses which genetic operator to use probabilistically.
@@ -1562,8 +1623,8 @@
       (= genetic-chance 1) {:program (uniform-deletion ((tournament-selection population) :program)),
                             :errors [],
                             :total-error 0}
-      (< genetic-chance 4) {:program (crossover ((lexicase-tournament-selection population cases) :program)
-                                                ((lexicase-tournament-selection population reverse-cases) :program)),
+      (< genetic-chance 4) {:program (crossover ((tournament-lexicase-selection population cases) :program)
+                                                ((tournament-lexicase-selection population reverse-cases) :program)),
                             :errors [],
                             :total-error 0}
       :ELSE {:program (crossover ((tournament-selection population) :program)
@@ -1832,6 +1893,15 @@
 (def test-case-7
   {:program '(step) :errors [] :total-error 0})
 
+(def test-case-8
+  {:program '(in3 ultimate-win-piece-checker) :errors [] :total-error 0})
+
+(def test-case-9
+  {:program '(ultimate-win-checker) :errors [] :total-error 0})
+
+(def test-case-10
+  {:program '(in3 in2 best-player) :errors [] :total-error 0})
+
 (def test-case-rand
   {:program '(integer-rand) :errors [] :total-error 0})
 
@@ -1845,7 +1915,7 @@
         new-test-cases (take 10
                              (repeatedly #(make-random-individual instructions
                                                                   50)))]
-    (conj test-cases
+    (conj (concat test-cases new-test-cases)
           test-case-0
           test-case-1
           test-case-2
@@ -1854,6 +1924,14 @@
           test-case-5
           test-case-6
           test-case-7
+          test-case-8
+          test-case-9
+          test-case-10
+          test-case-10
+          test-case-10
+          test-case-10
+          test-case-10
+          test-case-10
           test-case-rand)))
 
 
