@@ -58,8 +58,9 @@
 (def example-individual
   {:program
    ;'(boolean-and integer-max int-if integer_% check-right-same boolean-rand exec-dup exec-swap 1 fake-step-win-checker integer_+ exec-if in1 exec_= integer-min integer_- false boolean-from-integer integer_< integer_< integer-min check-col-top check-col-top check-left-2 check-diag-left 2 boolean-and exec-swap check-col-top true)
-   ;'(exec-if get-a-piece exec-dup check-diag-left int-if boolean_= in1 integer_* exec-dup integer-max check-col-top-2 2 integer_%)
-   '(check-left boolean-and check-left 2 check-right-2 boolean-from-integer integer-min check-diag-right in1 boolean-dup check-right-2 in1 exec-if fake-step-win-checker exec-while integer-rand integer-swap exec-dup check-col-top fake-step-win-checker integer_% integer-max integer-from-boolean integer_+ check-right 0 in1 check-right-2 boolean-from-integer get-a-piece)
+   ;'(exec-if get-a-piece exec-dup check-diag-left int-if boolean_= in1 integer_* ex
+   '(integer-max check-diag-left-bottom-2 exec-if 2 exec-if check-diag-right-bottom-2 boolean-rand check-diag-left-top 1 boolean-rand check-diag-right-top-2 integer-dup check-left-2 check-left-2 integer_< boolean-rand 2 boolean-dup 1 1 1 check-right-2 integer_+ integer_+)
+
    :errors []
    :total-error 0})
 
@@ -538,12 +539,12 @@
   (make-push-instruction-list state integer-pop-helper [:integer] []))
 
 (def min-random-integer 0)
-(def max-random-integer 9)
+(def max-random-integer 7)
 
 (defn integer-rand-helper
   "Pushes a newly generated random integer that is greater than or equal to min-random-integer and less than or equal to max-random-integer."
   []
-  (rand-nth (map #(+ % min-random-integer) (range (- max-random-integer min-random-integer)))))
+  (rand-int 7))
 
 (defn integer-rand
   "how to not pop anything and just push number?"
@@ -1314,11 +1315,12 @@
          player "ooo"
          init-state (assoc empty-push-state :input {:in1 init-board :in2 "ooo" :in3 "***"} :game-state (list init-board))
          result-state (interpret-push-program (individual1 :program) init-state)
-         step (peek-stack result-state :integer)]
+         step (peek-stack result-state :integer)
+         round 0]
 
-    (print-board init-board)
-    (println player)
-    (println step)
+    ;(print-board init-board)
+    ;(println player)
+    ;(println step)
     ;; Note that if the program does not have any output,
     ;; returns a penalty error of 1000.
     ;; if the game-board is full, return 1, fail to win
@@ -1344,12 +1346,13 @@
             ;;(println player)
             ;;(println)
             (cond (and (win-check game-board player) (= player "ooo")) 0
-                  (and (win-check game-board player) (= player "***")) 1
+                  (and (win-check game-board player) (= player "***")) (- 100 round)
                   :ELSE (recur game-board
                                "ooo"
                                init-state-2
                                result-state-2
-                               (peek-stack result-state-2 :integer)))))
+                               (peek-stack result-state-2 :integer)
+                               (inc round)))))
         
         (let [colnum (next-avail-col init-board step)
               game-board (play-a-step init-board player step)
@@ -1361,14 +1364,15 @@
               result-state-2 (interpret-push-program
                               ((switching-forward player individual1 individual2) :program)
                               init-state-2)]
- 
+
           (cond (and (win-check game-board player) (= player "ooo")) 0
-                (and (win-check game-board player) (= player "***")) 1
+                (and (win-check game-board player) (= player "***")) (- 100 round)
                 :ELSE (recur game-board
                              (switch-player player "ooo" "***")
                              init-state-2
                              result-state-2
-                             (peek-stack result-state-2 :integer))))))))
+                             (peek-stack result-state-2 :integer)
+                             (inc round))))))))
 
 
 (defn error-eval
@@ -1385,11 +1389,12 @@
          player "ooo"
          init-state (assoc empty-push-state :input {:in1 init-board :in2 "ooo" :in3 "***"} :game-state (list init-board))
          result-state (interpret-push-program (individual2 :program) init-state)
-         step (peek-stack result-state :integer)]
+         step (peek-stack result-state :integer)
+         round 0]
 
    ;(print-board init-board)
    ;(println player)
-   ; (println step)
+   ;(println step)
     ;; Note that if the program does not have any output,
     ;; returns a penalty error of 1000.
     ;; if the game-board is full, return 1, fail to win
@@ -1415,12 +1420,13 @@
             ;;(println player)
             ;;(println)
             (cond (and (win-check game-board player) (= player "***")) 0
-                  (and (win-check game-board player) (= player "ooo")) 1
+                  (and (win-check game-board player) (= player "ooo")) (- 100 round)
                   :ELSE (recur game-board
                                "***"
                                init-state-2
                                result-state-2
-                               (peek-stack result-state-2 :integer)))))
+                               (peek-stack result-state-2 :integer)
+                               (inc round)))))
         
         (let [colnum (next-avail-col init-board step)
               game-board (play-a-step init-board player step)
@@ -1434,12 +1440,13 @@
                               init-state-2)]
  
           (cond (and (win-check game-board player) (= player "***")) 0
-                (and (win-check game-board player) (= player "ooo")) 1
+                (and (win-check game-board player) (= player "ooo")) (- 100 round)
                 :ELSE (recur game-board
                              (switch-player player "ooo" "***")
                              init-state-2
                              result-state-2
-                             (peek-stack result-state-2 :integer))))))))
+                             (peek-stack result-state-2 :integer)
+                             (inc round))))))))
 
 ;;;;;;;;;;
 ;; GP
@@ -1611,7 +1618,7 @@
   Gives 50% chance to crossover, 25% to uniform-addition,
   and 25% to uniform-deletion."
   [population]
-  (let [genetic-chance (rand-int 4)
+  (let [genetic-chance (rand-int 6)
         cases (take 50 (repeatedly #(rand-nth population)))
         reverse-cases (reverse cases)]
     ;; Note that the default setting for the returned child individual
@@ -1751,10 +1758,69 @@
       :ELSE (let [new-population (generate-new-population initial-population
                                                           population-size
                                                           error-function)]
-              (recur (conj new-population best-prog)
+              (recur new-population
                      (inc generation)
                      (report new-population (inc generation)))))))
 
+(defn rand-list-generator
+  [x max-value]
+  (map (fn [%] (rand-int max-value)) (range x)))
+
+(defn push-gp-test
+  "Main GP loop. Initializes the population, and then repeatedly
+  +  generates and evaluates new populations. Stops if it finds an
+  +  individual with 0 error (and should return :SUCCESS, or if it
+  +  exceeds the maximum generations (and should return nil). Should print
+  +  report each generation.
+  +  --
+  +  The only argument should be a map containing the core parameters to
+  +  push-gp. The format given below will decompose this map into individual
+  +  arguments. These arguments should include:
+  +  - population-size
+  +  - max-generations
+  +  - error-function
+  +  - instructions (a list of instructions)
+  +  - max-initial-program-size (max size of randomly generated programs)"
+  [{:keys [population-size max-generations error-function
+           instructions max-initial-program-size]}]
+  ;; Starts with initializing and evaluating a population.
+  ;; Does a tail recursion on generating and evaluating new populations
+  ;; from the old generation. Prints out a report for each generation.
+  ;; Note that the report function prints a report and
+  ;; returns an individual with best total-error in the population.
+  (loop [initial-population (initialize-population population-size
+                                                   instructions
+                                                   max-initial-program-size
+                                                   error-function)
+         initial-population-2 (initialize-population population-size
+                                                     instructions
+                                                     max-initial-program-size
+                                                     error-function)
+         generation 0
+         best-prog (report initial-population generation)
+         best-prog-2 (report initial-population-2 generation)]
+    ;; Stops if it finds and individual with a total error of 0 (returns
+    ;; :SUCCESS) or if the program exceeds the maximum generation (returns nil).
+    (cond
+      (or (= (best-prog-2 :total-error) 0) (= (best-prog :total-error) 0)) :SUCCESS
+      (= generation max-generations) nil
+      :ELSE (let [rand-subpop (map #(nth initial-population %)
+                                   (rand-list-generator 3 population-size))
+                  rand-subpop-2 (map #(nth initial-population-2 %)
+                                     (rand-list-generator 3 population-size))
+                  new-population (generate-new-population (concat initial-population
+                                                                  rand-subpop-2)
+                                                          population-size
+                                                          error-function)
+                  new-population-2 (generate-new-population (concat initial-population-2
+                                                                    rand-subpop)
+                                                            population-size
+                                                            error-function)]
+              (recur new-population
+                     new-population-2
+                     (inc generation)
+                     (report new-population (inc generation))
+                     (report new-population-2 (inc generation)))))))
 
 ;;;;;;;;;;
 ;; The functions below are specific to a particular problem.
@@ -1830,7 +1896,7 @@
                                             :in3 "***"}
                                     :game-state (list game-board))
                 result-state-2 (interpret-push-program
-                                ((switching player individual1 individual2) :program)
+                                ((switching-forward player individual1 individual2) :program)
                                 init-state-2)]
             ;;(println (init-state-2 :input))
             ;;(print-board game-board)
@@ -1853,7 +1919,7 @@
                                           :in3 player}
                                   :game-state (list game-board))
               result-state-2 (interpret-push-program
-                              ((switching player individual1 individual2) :program)
+                              ((switching-forward player individual1 individual2) :program)
                               init-state-2)]
  
           (cond (and (win-check game-board player) (= player "ooo")) 0
@@ -1867,7 +1933,7 @@
 
 (defn generate-random-index
   []
-  (range 100))
+  (range 30))
 
 (def test-case-0
   {:program '(0) :errors [] :total-error 0})
@@ -1912,10 +1978,10 @@
   [population]
   (let [test-cases (map #(nth population (mod % (count population)))
                         (generate-random-index))
-        new-test-cases (take 10
+        new-test-cases (take 5
                              (repeatedly #(make-random-individual instructions
                                                                   50)))]
-    (conj (concat test-cases new-test-cases)
+    (conj test-cases
           test-case-0
           test-case-1
           test-case-2
@@ -1924,10 +1990,14 @@
           test-case-5
           test-case-6
           test-case-7
+          test-case-7
+          test-case-7
           test-case-8
+          test-case-8
+          test-case-8 
           test-case-9
-          test-case-10
-          test-case-10
+          test-case-9
+          test-case-9
           test-case-10
           test-case-10
           test-case-10
@@ -1950,7 +2020,8 @@
   ;; test-inputs will be a list of individuals
   [individual population]
   ;;(print (test-inputs population))
-  (let [errors (map #(error-eval individual %) (test-inputs population))
+  (let [;errors (concat (map #(error-eval individual %) (test-inputs population))
+        errors (map #(error-eval-old individual %) (test-inputs population))
         total-error (apply +' errors)]
     ;; update the error vector and total-error of the individual
     (assoc individual :errors errors :total-error total-error)))
@@ -1964,9 +2035,9 @@
   "Runs push-gp, giving it a map of arguments."
   [& args]
   (binding [*ns* (the-ns 'push307.core)]
-    (push-gp {:instructions instructions
+    (push-gp-test {:instructions instructions
               :error-function error-function
               :max-generations 100
-              :population-size 200
+              :population-size 100
               :max-initial-program-size 50})))
 
