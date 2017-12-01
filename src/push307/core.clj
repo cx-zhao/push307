@@ -1431,6 +1431,7 @@
                              (peek-stack result-state-2 :integer)
                              (inc round))))))))
 
+
 (defn switching-backward
   "Returns individual2 if the current player is ***;
   returns individual1 if the current player is ooo"
@@ -1571,13 +1572,11 @@
   tournament of size 5. 
   Returned individual will be a parent in the next generation."
   [population case-list]
-  ;; Takes five individuals from the population randomly.
-  ;; Does a tail recursion on comparing the total-error of two individuals;
-  ;; winner will be the individual with the lowest total-error so far.
+
   (loop [candidates population
          cases case-list]
     (let [cand-list
-          (filter #(= (error-eval-forward % (first cases)) 0) candidates)]
+          (filter #(zero? (nth (% :errors) (mod (first cases) 100))) candidates)]
       (cond
         (empty? cand-list) (tournament-selection candidates)
         (= 1 (count cases)) (rand-nth cand-list)
@@ -1595,13 +1594,11 @@
   over the input case-list.
   Returned individual will be a parent in the next generation."
   [population case-list]
-  ;; Takes five individuals from the population randomly.
-  ;; Does a tail recursion on comparing the error of two individuals;
-  ;; winner will be the individual with the lowest total-error so far.
+
   (loop [candidates (take 5 (repeatedly #(tournament-selection population)))
          cases case-list]
     (let [cand-list
-          (filter #(= (error-eval-forward % (first cases)) 0) candidates)]
+          (filter #(zero? (nth (% :errors) (mod (first cases) 100))) candidates)]
       (cond
         (empty? cand-list) (rand-nth candidates)
         (= 1 (count cases)) (rand-nth cand-list)
@@ -1670,6 +1667,12 @@
   (filter #(not (mutation-rate %)) prog))
 
 
+(defn rand-list-generator
+  "Returns a list of x randomly generated numbers less than the max-value."
+  [x max-value]
+  (map (fn [%] (rand-int max-value)) (range x)))
+
+
 (defn select-and-vary
   "Selects parent(s) from population using tournament selection of size 5
   and varies them, returning a child individual (note: not program).
@@ -1680,8 +1683,10 @@
   20% to uniform-addition,
   and 20% to uniform-deletion."
   [population]
+  ;; cases is an index list for lexicase seleciton
+  ;; reverse case is the reverse list of the case list.
   (let [genetic-chance (rand-int 5)
-        cases (take 50 (repeatedly #(rand-nth population)))
+        cases (rand-list-generator 50 100)
         reverse-cases (reverse cases)]
     ;; Note that the default setting for the returned child individual
     ;; will have a error vector of [] and a total-error of 0.
@@ -1693,7 +1698,8 @@
       (= genetic-chance 2) {:program (uniform-deletion ((tournament-selection population) :program)),
                             :errors [],
                             :total-error 0}
-      
+      ;; select parent using lexicase selection over cases and reverse cases will hopefully improve the
+      ;; diversity of the population.
       (= genetic-chance 3) {:program (crossover ((tournament-lexicase-selection population cases) :program)
                                                 ((tournament-lexicase-selection population reverse-cases) :program)),
                             :errors [],
@@ -1741,8 +1747,7 @@
   Best total error: 727
   Best errors: (117 96 77 60 45 32 21 12 5 0 3 4 3 0 5 12 21 32 45 60 77)
 
-  Returns the best program in the population.
-  "
+  Returns the best program in the population. "
   [population generation]
   (let [best-program (best-tournament-selection population)]
     (println "-------------------------------------------------------")
@@ -1780,12 +1785,6 @@
   [population population-size error-function]
   (take population-size
         (repeatedly #(error-function (select-and-vary population) population))))
-
-
-(defn rand-list-generator
-  "Returns a list of x randomly generated numbers less than the max-value."
-  [x max-value]
-  (map (fn [%] (rand-int max-value)) (range x)))
 
 
 (defn push-gp
@@ -1848,7 +1847,7 @@
                      (report new-population-2 (inc generation)))))))
 
 ;;;;;;;;;;;;;;;;;;;
-                                        ; helper push instructions for advanced test cases, but not for push gp.
+;; helper push instructions for advanced test cases, but not for push gp.
 
 (defn advanced-player-helper
   "Returns a column number that will lead to a win starting from that
@@ -2001,14 +2000,14 @@
 
 (defn test-inputs
   "A list of test cases for the error function.
-  100 of them are randomly selected from the population.
+  20 of them are randomly selected from the population.
   10 of them are randomly generated.
   20 of them are designed intelligent programs.
   All test cases are individuals (maps)."
   [population]
   (let [test-cases (map #(nth population (mod % (count population)))
-                        (rand-list-generator 100 (dec (count population))))
-        new-test-cases (take 10 (repeatedly #(make-random-individual instructions  50)))]
+                        (rand-list-generator 20 (dec (count population))))
+        new-test-cases (take 10 (repeatedly #(make-random-individual instructions 50)))]
     (conj (concat test-cases new-test-cases)
           test-case-0
           test-case-1
@@ -2069,5 +2068,5 @@
              :error-function error-function
              :max-generations 100
              :population-size 200
-             :max-initial-program-size 100})))
+             :max-initial-program-size 50})))
 
