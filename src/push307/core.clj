@@ -1821,11 +1821,14 @@
          generation 0
          best-prog (report initial-population generation)
          best-prog-2 (report initial-population-2 generation)]
-    ;; Stops if it finds and individual with a total error of 0 (returns
-    ;; :SUCCESS) or if the program exceeds the maximum generation (returns nil).
+    ;; Stops if it finds an individual with a total error of 0 in
+    ;; one of the populations (returns :SUCCESS)
+    ;; or if the program exceeds the maximum generation (returns nil).
     (cond
       (or (= (best-prog :total-error) 0) (= (best-prog-2 :total-error) 0)) :SUCCESS
       (= generation max-generations) nil
+      ;; Exchanges three individuals from the populations to each other
+      ;; for each generation.
       :ELSE (let [rand-subpop (map #(nth initial-population %)
                                    (rand-list-generator 3 population-size))
                   rand-subpop-2 (map #(nth initial-population-2 %)
@@ -2066,5 +2069,5 @@
              :error-function error-function
              :max-generations 100
              :population-size 200
-             :max-initial-program-size 200})))
+             :max-initial-program-size 100})))
 
