@@ -1706,8 +1706,8 @@
       
       :ELSE  {:program (crossover ((tournament-selection population) :program)
                                   ((tournament-selection population) :program)),
-                             :errors [],
-                             :total-error 0})))
+              :errors [],
+              :total-error 0})))
 
 
 
@@ -1848,7 +1848,7 @@
                      (report new-population-2 (inc generation)))))))
 
 ;;;;;;;;;;;;;;;;;;;
-; helper push instructions for advanced test cases, but not for push gp.
+                                        ; helper push instructions for advanced test cases, but not for push gp.
 
 (defn advanced-player-helper
   "Returns a column number that will lead to a win starting from that
@@ -1899,7 +1899,7 @@
       :ELSE (recur (inc col)))))
 
 (defn ultimate-win-checker
-   "Takes a game state, and returns a number that suggests the game strategy
+  "Takes a game state, and returns a number that suggests the game strategy
   using ultimate-win-checker-helper function."
   [state]
   (make-push-instruction state ultimate-win-checker-helper [:game-state] :integer))
