@@ -16,16 +16,8 @@
 ;;;;;;;;;;
 ;; Examples
 
-
 ;; An example Push state
 (def example-push-state
-  {:exec '(integer_+)
-   :integer '(3 1 2 3 4 5 6 7)
-   :string '("abc" "def")
-   :bool '(true false)
-   :input {:in1 4 :in2 6}})
-
-(def example-push-state-2
   {:exec '()
    :integer '(2 3)
    :string '("***")
@@ -37,47 +29,33 @@
                   []
                   []
                   ["***""ooo"]])
-   :input {:in1 [["***"]
-                 ["***""ooo""***""***""***""***"]
-                 ["ooo""ooo""ooo""ooo"]
-                 ["ooo"]
-                 []
-                 []
-                 ["***""ooo"]] :in2 "***" :in3 "ooo"}})
+   :input {:in1 [[] [] [] [] [] [] []]
+           :in2 "***"
+           :in3 "ooo"}})
 
 ;; An example Push program
 (def example-push-program
-  '(3 5 integer_* "hello" 4 "world" integer_-))
-
-(def example-push-program-2
-  '(exec-while))
+  '(integer-min check-col-top 0 3 5 integer_* "hello" 4 "world"))
 
 ;; An example individual in the population
 ;; Made of a map containing, at mimimum, a program, the errors for
 ;; the program, and a total error
 (def example-individual
-  {:program
-   ;'(boolean-and integer-max int-if integer_% check-right-same boolean-rand exec-dup exec-swap 1 fake-step-win-checker integer_+ exec-if in1 exec_= integer-min integer_- false boolean-from-integer integer_< integer_< integer-min check-col-top check-col-top check-left-2 check-diag-left 2 boolean-and exec-swap check-col-top true)
-   ;'(exec-if get-a-piece exec-dup check-diag-left int-if boolean_= in1 integer_* ex
-   '(integer-max check-diag-left-bottom-2 exec-if 2 exec-if check-diag-right-bottom-2 boolean-rand check-diag-left-top 1 boolean-rand check-diag-right-top-2 integer-dup check-left-2 check-left-2 integer_< boolean-rand 2 boolean-dup 1 1 1 check-right-2 integer_+ integer_+)
-
+  {:program '(integer-min check-col-top 0 integer_> true 0)
    :errors []
    :total-error 0})
 
-(def example-ind-2
-   {:program
-    ;'(true integer_> in1 exec-dup integer-max integer-from-boolean boolean-from-integer check-col-top-2 exec-swap 1 2 integer_+ integer_+ check-right integer_* integer-min check-right true integer-swap in1 get-a-piece exec_= integer_* integer_> integer-max check-right-same integer-min integer_> in1 check-right-2)
- 
-    '(int-if check-left-2 check-diag-right-bottom-same integer_> in3 check-diag-right-bottom check-left check-diag-left-bottom 1 check-left-2 check-diag-left-bottom in1 in1 integer_> check-right-2 integer_+ check-diag-right-bottom-2 integer-pop boolean-dup integer-rand check-diag-left-bottom-2 in1)
-    :errors[]
-    :total-error 0})
-
-
 ;;-----------------------------------
-;; game setup
+;; connect-4 game setup
+
+;; An empty connect-4 game board. Each vector represents a column
+;; of the game board.
 (def empty-board
   [[][][][][][][]])
 
+;; An example connect-4 game board.
+;; The first element of a vector is at the bottom of a column, and
+;; the last element of a vector is the top piece of a column.
 (def example-board
   [["***"]
    ["***""ooo""***""***""***""***"]
@@ -88,7 +66,7 @@
    ["***""ooo"]])
 
 (defn print-board
-  "Print a game board"
+  "Takes a connect 4 game-board and print it. Returns nil"
   [board]
   (loop [index 5]
     (apply print (map #(get % index) board))
@@ -97,53 +75,50 @@
       nil
       (recur (dec index)))))
 
-;; test
-;;(print-board example-board)
-
 (defn initialize-board
+  "Returns an empty connect-4 game-board."
   []
   empty-board)
 
 (defn check-availability
+  "Takes board, a connect-4 game-board and col, a column number;
+  returns true if the column is not full.
+  Note that each column can take at most six discs."
   [board col]
   (< (count (get board (mod col 7))) 6))
 
 (defn full-board
+  "Returns true if the input game board is full."
   [board]
   (empty? (filter #(check-availability board %) (range 7))))
 
 (defn next-avail-col
+  "Takes a connect-4 game board and an integer column number;
+  returns the column number of the next available column on the board.
+  If the game-board is full, returns nil."
   [board col]
   (first (filter #(check-availability board %)
                  (map #(mod % 7) (range col (+ col 7))))))
 
 (defn play-a-step
+  "Takes a game board, a disc and a column number;
+  if the column is available, place the disc at the column and returns the
+  resulting game board; otherwise, place the disc at the next available
+  column on the board and returns the game board.
+  Note that if the game board is full, returns the board itself."
   [board disc col]
   (let [colnum (next-avail-col board col)]
-    ;;(println colnum)
     (if (= colnum nil)
       board
       (update board colnum #(conj % disc)))))
 
-
-(defn switch-player
-  [player p1 p2]
-  (if (= player p1)
-    p2
-    p1))
-
-;; test
-;;(print-board (play-a-step example-board "***" 1))
-
-(defn check
-  [checklist disc]
-  (not= (count (filter #(= [disc disc disc disc] %) checklist)) 0))
-
 (defn check-vector
+  "Takes a game-board and a column number.
+  Returns a vector of all available vectors of four pieces,
+  starting from the top of the game board."
   [board colnum]
   (let [col (get board colnum)
         index (dec (count col))]
-    ;; (print-board board)
     (cond-> []
       ;; check vertical
       (> index 2) (conj (subvec col (- (count col) 4)))
@@ -154,21 +129,26 @@
       (< colnum 4) (conj (vec (map #(get (get board (+ colnum %)) index)
                                    (range 4))))
       ;; check diagonal, to top right
-      (and (< index 3) (< colnum 4)) (conj (vec (map #(get (get board (+ colnum %))
-                                                           (+ index %)) (range 4))))
+      (and (< index 3) (< colnum 4))
+      (conj (vec (map #(get (get board (+ colnum %))
+                            (+ index %)) (range 4))))
       ;; check diagonal, to bottom left
-      (and (> index 2) (> colnum 2)) (conj (vec (map #(get (get board (- colnum %))
-                                                           (- index %)) (range 4))))
+      (and (> index 2) (> colnum 2))
+      (conj (vec (map #(get (get board (- colnum %))
+                            (- index %)) (range 4))))
       ;; check diagonal, to top left
-      (and (< index 3) (> colnum 2)) (conj (vec (map #(get (get board (- colnum %))
-                                                           (+ index %)) (range 4))))
+      (and (< index 3) (> colnum 2))
+      (conj (vec (map #(get (get board (- colnum %))
+                            (+ index %)) (range 4))))
       ;; check diagonal, to bottom right
-      (and (> index 2) (< colnum 4)) (conj (vec (map #(get (get board (+ colnum %))
-                                                           (- index %)) (range 4)))))))
-
-
+      (and (> index 2) (< colnum 4))
+      (conj (vec (map #(get (get board (+ colnum %))
+                            (- index %)) (range 4)))))))
 
 (defn check-helper
+  "Takes a game-board and a column number and a row number.
+  Returns a vector of all available vectors of four pieces,
+  starting at row rownum, column colnum on the board."
   [board colnum rownum]
   (let [col (get board colnum)
         index rownum]
@@ -183,28 +163,35 @@
       (< colnum 4) (conj (vec (map #(get (get board (+ colnum %)) index)
                                    (range 4))))
       ;; check diagonal, to top right
-      (and (< index 3) (< colnum 4)) (conj (vec (map #(get (get board (+ colnum %))
-                                                           (+ index %)) (range 4))))
+      (and (< index 3) (< colnum 4))
+      (conj (vec (map #(get (get board (+ colnum %))
+                            (+ index %)) (range 4))))
       ;; check diagonal, to bottom left
-      (and (> index 2) (> colnum 2)) (conj (vec (map #(get (get board (- colnum %))
-                                                           (- index %)) (range 4))))
+      (and (> index 2) (> colnum 2))
+      (conj (vec (map #(get (get board (- colnum %))
+                            (- index %)) (range 4))))
       ;; check diagonal, to top left
-      (and (< index 3) (> colnum 2)) (conj (vec (map #(get (get board (- colnum %))
-                                                           (+ index %)) (range 4))))
+      (and (< index 3) (> colnum 2))
+      (conj (vec (map #(get (get board (- colnum %))
+                            (+ index %)) (range 4))))
       ;; check diagonal, to bottom right
-      (and (> index 2) (< colnum 4)) (conj (vec (map #(get (get board (+ colnum %))
-                                                          (- index %)) (range 4)))))))
+      (and (> index 2) (< colnum 4))
+      (conj (vec (map #(get (get board (+ colnum %))
+                            (- index %)) (range 4)))))))
 
+(defn check
+  "Returns true if [disc disc disc disc] is a vector in the checklist."
+  [checklist disc]
+  (not= (count (filter #(= [disc disc disc disc] %) checklist)) 0))
 
 (defn win-check
+  "Returns true if player playing with disc wins."
   [board disc]
   (loop [index-num 0]
     (if (>= index-num 42)
       false
       (let [colnum (mod index-num 7)
             rownum (quot index-num 7)]
-        ;(println colnum)
-        ;(println rownum)
         (if (check (check-helper board colnum rownum) disc)
           true
           (recur (inc index-num)))))))
@@ -229,11 +216,10 @@
    'integer_>
    'integer-dup
    'integer-from-boolean
-   'integer-max
-   'integer-min
    'integer-rand
    'integer-swap
    'integer-pop
+   'integer-if
    'boolean_=
    'boolean-dup
    'boolean-from-integer
@@ -242,7 +228,6 @@
    'boolean-and
    'boolean-or
    'piece-rand
-   'int-if
    'exec_=
    'exec-dup
    'exec-if
@@ -272,11 +257,10 @@
    'check-diag-right-bottom-same
    0
    1
-   2
    true
    false
    ))
-;;   'integer-rand
+
 ;;;;;;;;;;
 ;; Utilities
 
@@ -351,11 +335,11 @@
         (push-to-stack new-state return-stack result)))))
 
 
-
 (defn make-push-instruction-list
   "A utility function for making Push instructions.
   Takes a state, the function to apply to the args,
-  the stacks to take the args from, and the stacks to return the result to.
+  the stacks to take the args from, and
+  the list of stacks to return the result to.
   Applies the function to the args (taken from the stacks) and pushes
   the return values onto return-stacks in the resulting state."
   [state function arg-stacks return-stack]
@@ -369,11 +353,10 @@
         (if (zero? num-return)
           new-state
           (recur (rest result)
-                 (push-to-stack new-state (first return-list) (first result))
+                 (push-to-stack new-state (first return-list)
+                                (first result))
                  (rest return-list)
                  (dec num-return)))))))
-
-
 
 ;;;;;;;;;;
 ;; Instructions
@@ -385,7 +368,7 @@
   (push-to-stack state :exec ((state :input) :in1)))
 
 (defn in2
-  "Pushes the input labeled :in3 on the inputs map onto the :exec stack.
+  "Pushes the input labeled :in2 on the inputs map onto the :exec stack.
   Can't use make-push-instruction, since :input isn't a stack, but a map."
   [state]
   (push-to-stack state :exec ((state :input) :in2)))
@@ -442,296 +425,333 @@
 
 (defn integer_%
   "This instruction implements 'protected division'.
-  In other words, it acts like integer division most of the time, but if the
-  denominator is 0, it returns the numerator, to avoid divide-by-zero errors."
+  In other words, it acts like integer division most of the time,
+  but if the denominator is 0, it returns the numerator, to avoid
+  divide-by-zero errors."
   [state]
-  (make-push-instruction state protected-division [:integer :integer] :integer))
+  (make-push-instruction state protected-division
+                         [:integer :integer]
+                         :integer))
 
 (defn integer_<_helper
-  "Pushes TRUE onto the BOOLEAN stack if the second item is less than the top item, or FALSE otherwise."
+  "Returns true if the second integer is less than the first integer."
   [num1 num2]
   (< num2 num1))
 
 (defn integer_<
-  "placeholder"
+  "Pushes TRUE onto the BOOLEAN stack if the second item is less than the
+  top item, or FALSE otherwise."
   [state]
   (make-push-instruction state integer_<_helper [:integer :integer] :bool))
 
 
 (defn integer_=_helper
-  "Pushes TRUE onto the BOOLEAN stack if the top two items are equal, or FALSE otherwise."
+  "Returns true if the two integers are equal."
   [num1 num2]
   (== num2 num1))
 
 (defn integer_=
-  "placeholder"
+  "Pushes TRUE onto the BOOLEAN stack if the top two items are equal,
+  or FALSE otherwise."
   [state]
   (make-push-instruction state integer_=_helper [:integer :integer] :bool))
 
 
 (defn integer_>_helper
-  "Pushes TRUE onto the BOOLEAN stack if the second item is greater than the top item, or FALSE otherwise."
+  "Returns true if the second item is greater than the first item." 
   [num1 num2]
   (> num2 num1))
 
 (defn integer_>
-  "placeholder"
+  "Pushes TRUE onto the BOOLEAN stack if the second item is greater
+  than the top item, or FALSE otherwise."
   [state]
   (make-push-instruction state integer_>_helper [:integer :integer] :bool))
 
+
 (defn integer-dup-helper
-  "Duplicates the top item on the INTEGER stack. Does not pop its argument."
+  "Duplicates the input item."
   [num]
   [num num])
 
 (defn integer-dup
-  "placeholder"
+  "Duplicates the top item on the INTEGER stack."
   [state]
-  (make-push-instruction-list state integer-dup-helper [:integer] [:integer :integer]))
+  (make-push-instruction-list state integer-dup-helper
+                              [:integer]
+                              [:integer :integer]))
 
 
 (defn integer-from-boolean-helper
-  "Pushes 1 if the top BOOLEAN is TRUE, or 0 if the top BOOLEAN is FALSE."
+  "Returns 1 if input is true; otherwise, returns 0"
   [bool]
-  (if bool 1 0))
+  (if bool
+    1
+    0))
 
 (defn integer-from-boolean
-  "placeholder"
+  "Pushes 1 if the top BOOLEAN is TRUE, or 0 if the top BOOLEAN is FALSE."
   [state]
   (make-push-instruction state integer-from-boolean-helper [:bool] :integer))
 
 
 (defn integer-max-helper
-  "Pushes the maximum of the top two items."
+  "Returns the maximum of the two items."
   [num1 num2]
   (if (> num1 num2)
     num1
     num2))
 
 (defn integer-max
-  "placeholder"
+  "Pushes the maximum of the top two items to the integer stack."
   [state]
   (make-push-instruction state integer-max-helper [:integer :integer] :integer))
 
 
 (defn integer-min-helper
-  "Pushes the minimum of the top two items."
+  "Returns the minimum of the two items."
   [num1 num2]
   (if (< num1 num2)
     num1
     num2))
 
 (defn integer-min
-  "placeholder"
+  "Pushes the minimum of the top two items."
   [state]
   (make-push-instruction state integer-min-helper [:integer :integer] :integer))
 
 
 (defn integer-pop-helper
-  "Pops an integer off of the top of the INTEGER stack.
-  How to just pop something and return nothing to a stack?"
+  "Returns an empty list."
   [num]
   [])
 
 (defn integer-pop
-  "placeholder"
+  "Pops an integer off of the top of the INTEGER stack."
   [state]
   (make-push-instruction-list state integer-pop-helper [:integer] []))
+
 
 (def min-random-integer 0)
 (def max-random-integer 7)
 
 (defn integer-rand-helper
-  "Pushes a newly generated random integer that is greater than or equal to min-random-integer and less than or equal to max-random-integer."
+  "Returns a newly generated random integer that is greater than or
+  equal to min-random-integer and less than or equal to
+  max-random-integer."
   []
-  (rand-int 7))
+  (rand-nth (map #(+ % min-random-integer) (range (- max-random-integer min-random-integer)))))
 
 (defn integer-rand
-  "how to not pop anything and just push number?"
+  "Pushes a newly generated random integer that is greater than or equal
+  to min-random-integer and less than or equal to max-random-integer
+  to the integer stack."
   [state]
   (make-push-instruction state integer-rand-helper [] :integer))
 
 
 (defn integer-swap-helper
-  "Swaps the top two INTEGERs on the INTEGER stack."
+  "Swaps two inputs."
   [num1 num2]
   [num2 num1])
 
 (defn integer-swap
-  "placeholder"
+  "Swaps the top two INTEGERs on the INTEGER stack."
   [state]
   (make-push-instruction-list state integer-swap-helper [:integer :integer] [:integer :integer]))
 
 
 (defn boolean_=_helper
-  "Pushes TRUE onto the BOOLEAN stack if the top two BOOLEANs are equal, or FALSE otherwise."
+  "Returns TRUE if the two BOOLEANs are equal, or FALSE otherwise."
   [bool1 bool2]
   (= bool1 bool2))
 
 (defn boolean_=
-  "placeholder"
+  "Pushes TRUE onto the BOOLEAN stack if the top two BOOLEANs are equal,
+  or FALSE otherwise."
   [state]
   (make-push-instruction state boolean_=_helper [:bool :bool] :bool))
 
 
 (defn boolean-and-helper
-  "Pushes the logical AND of the top two BOOLEANs."
+  "Returns the logical AND of the top two BOOLEANs."
   [bool1 bool2]
   (and bool1 bool2))
 
 (defn boolean-and
-  "placeholder"
+  "Pushes the logical AND of the top two BOOLEANs on the bool stack."
   [state]
   (make-push-instruction state boolean-and-helper [:bool :bool] :bool))
 
 
 (defn boolean-or-helper
-  "Pushes the logical OR of the top two BOOLEANs."
+  "Returns the logical OR of the top two BOOLEANs."
   [bool1 bool2]
   (or bool1 bool2))
 
 (defn boolean-or
-  "placeholder"
+  "Pushes the logical OR of the top two BOOLEANs to the bool stack."
   [state]
   (make-push-instruction state boolean-and-helper [:bool :bool] :bool))
 
 
 (defn boolean-dup-helper
-  "Duplicates the top item on the BOOLEAN stack. Does not pop its argument."
+  "Duplicates the input."
   [bool]
   [bool bool])
 
 (defn boolean-dup
-  "placeholder"
+  "Duplicates the top item on the BOOLEAN stack."
   [state]
-  (make-push-instruction-list state boolean-dup-helper [:bool] [:bool :bool]))
+  (make-push-instruction-list state boolean-dup-helper
+                              [:bool]
+                              [:bool :bool]))
 
 
 (defn boolean-from-integer-helper
-  "Pushes FALSE if the top INTEGER is 0, or TRUE otherwise."
+  "Returns FALSE if the input is 0, or TRUE otherwise."
   [num]
   (if (== 0 num)
     false
     true))
 
 (defn boolean-from-integer
-  "placeholder"
+  "Pushes FALSE if the top INTEGER is 0, or TRUE otherwise to the
+  bool stack."
   [state]
-  (make-push-instruction state boolean-from-integer-helper [:integer] :bool))
+  (make-push-instruction state boolean-from-integer-helper
+                         [:integer]
+                         :bool))
 
 
 (defn boolean-rand-helper
-  "Pushes a newly generated random integer that is greater than or equal to min-random-integer and less than or equal to max-random-integer."
+  "Returns a random boolean"
   []
   (rand-nth [true false]))
 
 (defn boolean-rand
-  "placeholder"
+  "Pushes a newly generated random boolean to the bool stack."
   [state]
   (make-push-instruction state boolean-rand-helper [] :bool))
 
 
 (defn boolean-swap-helper
-  "Swaps the top two BOOLEANs on the BOOLEAN stack."
+  "Swaps the two inputs."
   [bool1 bool2]
   [bool2 bool1])
 
 (defn boolean-swap
-  "placeholder"
+  "Swaps the top two BOOLEANs on the BOOLEAN stack."
   [state]
-  (make-push-instruction-list state boolean-swap-helper [:bool :bool] [:bool :bool]))
+  (make-push-instruction-list state boolean-swap-helper
+                              [:bool :bool]
+                              [:bool :bool]))
 
 
-(defn int-if-helper
-  "Takes in a bool and two integers and returns one of the integers depending on the bool value."
+(defn integer-if-helper
+  "Returns the first number if the input bool is true;
+  returns the second number otherwise"
   [bool int1 int2]
   (if bool
     int1
     int2))
 
-(defn int-if
+(defn integer-if
   "Make a basic if push instruction with ints."
   [state]
-  (make-push-instruction state int-if-helper [:bool :integer :integer] :integer))
+  (make-push-instruction state integer-if-helper
+                         [:bool :integer :integer] :integer))
 
 
 (defn exec_=_helper
-  "Pushes TRUE onto the BOOLEAN stack if the top two items on the EXEC stack are equal, or FALSE otherwise."
+  "Returns TRUE  if the two inputs are equal, or FALSE otherwise."
   [exec1 exec2]
   (= exec1 exec2))
 
 (defn exec_=
-  "placeholder"
+  "Pushes TRUE onto the BOOLEAN stack if the top two items on the
+  EXEC stack are equal, or FALSE otherwise."
   [state]
   (make-push-instruction state exec_=_helper [:exec :exec] :bool))
 
 
 (defn exec-dup-helper
-  "Duplicates the top item on the EXEC stack. Does not pop its argument."
+  "Duplicates the input."
   [exec]
   [exec exec])
 
 (defn exec-dup
-  "placeholder"
+  "Duplicates the top item on the EXEC stack. Does not pop its argument."
   [state]
   (make-push-instruction-list state exec-dup-helper [:exec] [:exec :exec]))
 
 
 (defn exec-if-helper
-  "If the top item of the BOOLEAN stack is TRUE then this removes the second item on the EXEC stack, leaving the first item to be executed. If it is false then it removes the first item, leaving the second to be executed."
+  "Returns the first exec statment if true; returns the second exec
+  statement if false."
   [bool exec1 exec2]
   (if bool
     exec1
     exec2))
 
 (defn exec-if
-  "Make a basic if push instruction with exec instructions."
+  "If the top item of the BOOLEAN stack is TRUE then this removes the second item on the EXEC stack, leaving the first item to be executed. If it is false then it removes the first item, leaving the second to be executed."
   [state]
   (make-push-instruction state exec-if-helper [:bool :exec :exec] :exec))
 
 
 (defn exec-swap-helper
-  "Swaps the top two items on the EXEC stack."
+  "Swaps the two inputs."
   [exec1 exec2]
   [exec2 exec1])
 
 (defn exec-swap
-  "placeholder"
+  "Swaps the top two items on the EXEC stack."
   [state]
   (make-push-instruction-list state exec-swap-helper [:exec :exec] [:exec :exec]))
 
 
 (defn fill-in-blank
+  "Returns the input state without making any changes.
+  Helper function for exec-while."
   [state]
   state)
 
 (defn exec-while-helper
-  "Custom while loop"
+  "Custom while function: does the exec function for integer times."
   [exec integer]
   (cond
-    (<= integer 0) ['fill-in-blank 'fill-in-blank 'fill-in-blank 'fill-in-blank]
+    (<= integer 0) ['fill-in-blank 'fill-in-blank 'fill-in-blank
+                    'fill-in-blank]
     (= integer 1) [exec 'fill-in-blank 'fill-in-blank 'fill-in-blank]
     :ELSE [exec 'exec-while (dec integer) exec]))
 
-
 (defn exec-while
+  "Custom while function: does the exec function for integer times."
   [state]
-  (make-push-instruction-list state exec-while-helper [:exec :integer] [:exec :exec :exec :exec]))
+  (make-push-instruction-list state exec-while-helper
+                              [:exec :integer]
+                              [:exec :exec :exec :exec]))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Customized instructions for connect-4 game
 
 (defn piece-rand-helper
-  "Pushes a random game piece onto the string stack."
+  "Returns a random game piece."
   []
   (rand-nth ["***" "ooo"]))
 
 (defn piece-rand
-  "placeholder"
+  "Pushes a random game piece onto the string stack."
   [state]
   (make-push-instruction state boolean-rand-helper [] :string))
 
 
 (defn check-col-top-helper
-  "Returns true if the top piece in the column is the player's own piece, else returns false if it is the opponent's piece. If the column is empty, return false."
+  "Returns true if the top piece in the column is the same as string,
+  else returns false otherwise.
+  If the column is empty, return false."
   [game-board num string]
   (if (full-board game-board)
     [false game-board]
@@ -742,12 +762,21 @@
         [(= string (get col (dec (count col)))) game-board]))))
 
 (defn check-col-top
-  "placeholder"
+  "Pushes true onto the boolean stack if the top piece in the column is
+  the same as the top item on the string stack; Otherwise,
+  pushes false to the boolean stack.
+  Note that the function also pushes the input game board back to the
+  game-state stack"
   [state]
-  (make-push-instruction-list state check-col-top-helper [:game-state :integer :string] [:bool :game-state]))
+  (make-push-instruction-list state check-col-top-helper
+                              [:game-state :integer :string]
+                              [:bool :game-state]))
+
 
 (defn check-col-top-2-helper
-  "Returns true if the top piece in the column is the player's own piece, else returns false if it is the opponent's piece. If the column is empty, return false."
+  "Returns true if the top two pieces in the column are the same as string;
+  returns false otherwise.
+  If the column is empty, return false."
   [game-board num string]
   (if (full-board game-board)
     [false game-board]
@@ -759,14 +788,20 @@
                     (= string (get col (- (count col) 2)))) game-board]))))
 
 (defn check-col-top-2
-  "placeholder"
+  "Pushes true onto the boolean stack if the top two pieces in the column
+  are the same as the top item on the string stack; otherwise,
+  pushes false to the boolean stack.
+  Note that the function also pushes the input game board back to the
+  game-state stack"
   [state]
   (make-push-instruction-list state check-col-top-2-helper
                               [:game-state :integer :string]
                               [:bool :game-state]))
 
+
 (defn check-left-helper
-  "placeholder"
+  "Returns true if the piece to the left of the top piece in the column
+  is the same as the input string; returns false otherwise."
   [game-board num string]
   (cond
     (full-board game-board) [false game-board]
@@ -778,8 +813,12 @@
                 left-piece (get (get game-board (dec colnum)) rownum)]
             [(= left-piece string) game-board])))
 
-
 (defn check-left
+  "Pushes true onto the boolean stack if the piece to the left of the
+  top piece the top is the same as the top item on the string stack;
+  otherwise, pushes false to the boolean stack.
+  Note that the function also pushes the input game board back to the
+  game-state stack"
   [state]
   (make-push-instruction-list state check-left-helper
                               [:game-state :integer :string]
@@ -787,7 +826,8 @@
 
 
 (defn check-left-2-helper
-  "placeholder"
+  "Returns true if two pieces to the left of the top piece in the column
+  are the same as the input string; returns false otherwise."
   [game-board num string]
   (cond
     (full-board game-board) [false game-board]
@@ -800,16 +840,24 @@
                 left-col-2 (get game-board (- colnum 2))
                 left-piece-1 (get left-col-1 rownum)
                 left-piece-2 (get left-col-2 rownum)]
-            [(and (= left-piece-1 string) (= left-piece-2 string)) game-board])))
+            [(and (= left-piece-1 string) (= left-piece-2 string))
+             game-board])))
 
 (defn check-left-2
+  "Pushes true onto the boolean stack if two pieces to the left of the
+  top piece the top are the same as the top item on the string stack;
+  otherwise, pushes false to the boolean stack.
+  Note that the function also pushes the input game board back to the
+  game-state stack"
   [state]
   (make-push-instruction-list state check-left-2-helper
                               [:game-state :integer :string]
                               [:bool :game-state]))
 
+
 (defn check-right-helper
-  "placeholder"
+  "Returns true if the piece to the right of the top piece in the column
+  is the same as the input string; returns false otherwise."
   [game-board num string]
   (cond
     (full-board game-board) [false game-board]
@@ -822,13 +870,20 @@
             [(= left-piece string) game-board])))
 
 (defn check-right
+  "Pushes true onto the boolean stack if the piece to the right of the
+  top piece the top is the same as the top item on the string stack;
+  otherwise, pushes false to the boolean stack.
+  Note that the function also pushes the input game board back to the
+  game-state stack"
   [state]
   (make-push-instruction-list state check-right-helper
                               [:game-state :integer :string]
                               [:bool :game-state]))
 
+
 (defn check-right-2-helper
-  "placeholder"
+  "Returns true if two pieces to the left of the top piece in the column
+  are the same as the input string; returns false otherwise."
   [game-board num string]
   (cond
     (full-board game-board) [false game-board]
@@ -841,17 +896,23 @@
                 right-col-2 (get game-board (+ colnum 2))
                 right-piece-1 (get right-col-1 rownum)
                 right-piece-2 (get right-col-2 rownum)]
-            [(and (= right-piece-1 string) (= right-piece-2 string)) game-board])))
-
+            [(and (= right-piece-1 string) (= right-piece-2 string))
+             game-board])))
 
 (defn check-right-2
+  "Pushes true onto the boolean stack if two pieces to the right of the
+  top piece the top are the same as the top item on the string stack;
+  otherwise, pushes false to the boolean stack.
+  Note that the function also pushes the input game board back to the
+  game-state stack"
   [state]
   (make-push-instruction-list state check-right-2-helper
                               [:game-state :integer :string]
                               [:bool :game-state]))
 
+
 (defn check-diag-right-bottom-helper
-  "placeholder"
+  "Check the piece along bottom right diagonal."
   [game-board num piece]
   (if (full-board game-board)
     [false game-board]
@@ -864,13 +925,17 @@
                 [(= piece disc) game-board])))))
 
 (defn check-diag-right-bottom
+  "Check the piece along bottom right diagonal.
+   Note that the function also pushes the input game board back to the
+   game-state stack"
   [state]
   (make-push-instruction-list state check-diag-right-bottom-helper
                               [:game-state :integer :string]
                               [:bool :game-state]))
-  
+
+
 (defn check-diag-right-top-helper
-  "placeholder"
+  "Check the piece along top right diagonal."
   [game-board num piece]
   (if (full-board game-board)
     [false game-board]
@@ -883,13 +948,17 @@
                 [(= piece disc) game-board])))))
 
 (defn check-diag-right-top
+  "Check the piece along top right diagonal.
+   Note that the function also pushes the input game board back to the
+   game-state stack"
   [state]
   (make-push-instruction-list state check-diag-right-top-helper
                               [:game-state :integer :string]
                               [:bool :game-state]))
-  
+
+
 (defn check-diag-left-bottom-helper
-  "placeholder"
+  "Check the piece along bottom left diagonal."
   [game-board num piece]
   (if (full-board game-board)
     [false game-board]
@@ -902,13 +971,17 @@
                 [(= piece disc) game-board])))))
 
 (defn check-diag-left-bottom
+  "Check the piece along bottom left diagonal.
+   Note that the function also pushes the input game board back to the
+   game-state stack"
   [state]
   (make-push-instruction-list state check-diag-left-bottom-helper
                               [:game-state :integer :string]
                               [:bool :game-state]))
-  
+
+
 (defn check-diag-left-top-helper
-  "placeholder"
+  "Check the piece along top left diagonal."
   [game-board num piece]
   (if (full-board game-board)
     [false game-board]
@@ -921,14 +994,17 @@
                 [(= piece disc) game-board])))))
 
 (defn check-diag-left-top
+  "Check the piece along top left diagonal.
+   Note that the function also pushes the input game board back to the
+   game-state stack"
   [state]
   (make-push-instruction-list state check-diag-left-top-helper
                               [:game-state :integer :string]
                               [:bool :game-state]))
-  
-  
+
+
 (defn check-diag-right-bottom-2-helper
-  "placeholder"
+  "Check two pieces along bottom right diagonal."
   [game-board num piece]
   (if (full-board game-board)
     [false game-board]
@@ -942,13 +1018,17 @@
                 [(and (= piece disc1) (= piece disc2)) game-board])))))
 
 (defn check-diag-right-bottom-2
+  "Check two pieces along bottom right diagonal.
+   Note that the function also pushes the input game board back to the
+   game-state stack"
   [state]
   (make-push-instruction-list state check-diag-right-bottom-2-helper
                               [:game-state :integer :string]
                               [:bool :game-state]))
-  
+
+
 (defn check-diag-right-top-2-helper
-  "placeholder"
+  "Check two pieces along top right diagonal."
   [game-board num piece]
   (if (full-board game-board)
     [false game-board]
@@ -962,13 +1042,17 @@
                 [(and (= piece disc1) (= piece disc2)) game-board])))))
 
 (defn check-diag-right-top-2
+  "Check two pieces along top right diagonal.
+   Note that the function also pushes the input game board back to the
+   game-state stack"
   [state]
   (make-push-instruction-list state check-diag-right-top-2-helper
                               [:game-state :integer :string]
                               [:bool :game-state]))
-  
+
+
 (defn check-diag-left-bottom-2-helper
-  "placeholder"
+  "Check two pieces along bottom left diagonal."
   [game-board num piece]
   (if (full-board game-board)
     [false game-board]
@@ -982,13 +1066,17 @@
                 [(and (= piece disc1) (= piece disc2)) game-board])))))
 
 (defn check-diag-left-bottom-2
+  "Check two pieces along bottom left diagonal.
+   Note that the function also pushes the input game board back to the
+   game-state stack"
   [state]
   (make-push-instruction-list state check-diag-left-bottom-2-helper
                               [:game-state :integer :string]
                               [:bool :game-state]))
-  
+
+
 (defn check-diag-left-top-2-helper
-  "placeholder"
+  "Check two pieces along top left diagonal."
   [game-board num piece]
   (if (full-board game-board)
     [false game-board]
@@ -1002,15 +1090,18 @@
                 [(and (= piece disc1) (= piece disc2)) game-board])))))
 
 (defn check-diag-left-top-2
+  "Check two pieces along top left diagonal.
+   Note that the function also pushes the input game board back to the
+   game-state stack"
   [state]
   (make-push-instruction-list state check-diag-left-top-2-helper
                               [:game-state :integer :string]
                               [:bool :game-state]))
 
-  
-  
+
 (defn check-diag-right-bottom-same-helper
-  "placeholder"
+  "Returns whether the two pieces along bottom right diagonal
+  are the same."
   [game-board num]
   (if (full-board game-board)
     [false game-board]
@@ -1024,13 +1115,18 @@
                 [(= disc1 disc2) game-board])))))
 
 (defn check-diag-right-bottom-same
+  "Checks if the two pieces along bottom right diagonal are the same.
+   Note that the function also pushes the input game board back to the
+   game-state stack"
   [state]
   (make-push-instruction-list state check-diag-right-bottom-same-helper
                               [:game-state :integer]
                               [:bool :game-state]))
-  
+
+
 (defn check-diag-right-top-same-helper
-  "placeholder"
+  "Returns whether the two pieces along top right diagonal
+  are the same."
   [game-board num]
   (if (full-board game-board)
     [false game-board]
@@ -1044,13 +1140,18 @@
                 [(= disc1 disc2) game-board])))))
 
 (defn check-diag-right-top-same
+  "Checks if the two pieces along top right diagonal are the same.
+   Note that the function also pushes the input game board back to the
+   game-state stack"
   [state]
   (make-push-instruction-list state check-diag-right-top-same-helper
                               [:game-state :integer]
                               [:bool :game-state]))
-  
+
+
 (defn check-diag-left-bottom-same-helper
-  "placeholder"
+  "Returns whether the two pieces along bottom left diagonal
+  are the same."
   [game-board num]
   (if (full-board game-board)
     [false game-board]
@@ -1064,13 +1165,18 @@
                 [(= disc1 disc2) game-board])))))
 
 (defn check-diag-left-bottom-same
+  "Checks if the two pieces along bottom left diagonal are the same.
+   Note that the function also pushes the input game board back to the
+   game-state stack"
   [state]
   (make-push-instruction-list state check-diag-left-bottom-same-helper
                               [:game-state :integer]
                               [:bool :game-state]))
-  
+
+
 (defn check-diag-left-top-same-helper
-  "placeholder"
+  "Returns whether the two pieces along top left diagonal
+  are the same."
   [game-board num]
   (if (full-board game-board)
     [false game-board]
@@ -1084,13 +1190,17 @@
                 [(= disc1 disc2) game-board])))))
 
 (defn check-diag-left-top-same
+  "Checks if the two pieces along top left diagonal are the same.
+   Note that the function also pushes the input game board back to the
+   game-state stack"
   [state]
   (make-push-instruction-list state check-diag-left-top-same-helper
                               [:game-state :integer]
                               [:bool :game-state]))
 
+
 (defn check-right-same-helper
-  "placeholder"
+  "Returns whether the two pieces to the right are the same"
   [game-board num]
   (cond
     (full-board game-board) [false game-board]
@@ -1104,15 +1214,18 @@
                 right-piece-2 (get right-col-2 rownum)]
             [(= right-piece-1 right-piece-2) game-board])))
 
-
 (defn check-right-same
+  "Checks if the two pieces to the right are the same.
+   Note that the function also pushes the input game board back to the
+   game-state stack"
   [state]
   (make-push-instruction-list state check-right-same-helper
                               [:game-state :integer]
                               [:bool :game-state]))
 
+
 (defn check-left-same-helper
-  "placeholder"
+  "Returns whether the two pieces to the left are the same"
   [game-board num]
   (cond
     (full-board game-board) [false game-board]
@@ -1127,13 +1240,18 @@
             [(= left-piece-1 left-piece-2) game-board])))
 
 (defn check-left-same
+  "Checks if the two pieces to the left are the same.
+   Note that the function also pushes the input game board back to the
+   game-state stack"
   [state]
   (make-push-instruction-list state check-left-same-helper
                               [:game-state :integer]
                               [:bool :game-state]))
 
+
 (defn get-a-piece-helper
-  "Returns the piece at column c, row r on the board. If there is not a piece at the location, return an empty string."
+  "Returns the piece at column c, row r on the board.
+  If there is not a piece at the location, return an empty string."
   [game-board c r]
   (let [col (get game-board (mod c 7))
         piece (get col (mod r 6))]
@@ -1143,7 +1261,8 @@
 
 
 (defn get-a-piece
-  "placeholder"
+  "Pushes the piece at column c, row r on the board.
+  If there is not a piece at the location, pushes an empty string."
   [state]
   (make-push-instruction-list state get-a-piece-helper [:game-state :integer :integer] [:string :game-state]))
 
@@ -1158,91 +1277,17 @@
           board-* (play-a-step game-board  "***" colnum)
           checklist-o (check-vector board-o colnum)
           checklist-* (check-vector board-* colnum)]
-      ;(print (check checklist-o "ooo"))
-      ;(println checklist-o)
-      ;(print (check checklist-* "***"))
-      ;(println checklist-*)
       [c (or (check checklist-o "ooo")
              (check checklist-* "***")) game-board])))
 
 (defn fake-step-win-checker
+  "Pushes true if place a piece at the column of the top item
+  on the integer stack  will lead to a win"
   [state]
   (make-push-instruction-list state fake-step-win-checker-helper
                               [:game-state :integer]
                               [:integer :bool :game-state]))
 
-(defn step-helper
-  [game-board]
-  (loop [num 0]
-    (cond
-      (> num 6) (rand-int 7)
-      (get (fake-step-win-checker-helper game-board num) 1) num
-      :ELSE (recur (inc num)))))
-
-(defn step
-  [state]
-  (make-push-instruction state step-helper
-                         [:game-state] :integer))
-
-(defn ultimate-win-piece-checker-helper
-  ""
-  [game-board game-piece]
-  (loop [col 0]
-    (cond
-      (> col 6) (rand-int 7)
-      (win-check (play-a-step game-board game-piece col) game-piece) col
-      :ELSE (recur (inc col)))))
-
-(defn ultimate-win-piece-checker
-  [state]
-  (make-push-instruction state ultimate-win-piece-checker-helper [:game-state :string] :integer))
-
-(defn ultimate-win-checker-helper
-  ""
-  [game-board]
-  (loop [col 0]
-    (cond
-      (> col 6) (rand-int 7)
-      (win-check (play-a-step game-board "ooo" col) "ooo") col
-      (win-check (play-a-step game-board "***" col) "***") col
-      :ELSE (recur (inc col)))))
-
-(defn ultimate-win-checker
-  [state]
-  (make-push-instruction state ultimate-win-checker-helper [:game-state] :integer))
-
-(defn best-player-helper
-  ""
-  [game-board opponent-game-piece own-game-piece]
-  (let [checklist1 (filter #(win-check (play-a-step game-board own-game-piece %) own-game-piece) (range 7))
-        checklist2 (filter #(win-check (play-a-step game-board opponent-game-piece %) opponent-game-piece) (range 7))]
-    (cond
-      (not (empty? checklist1)) (first checklist1)
-      (not (empty? checklist2)) (first checklist2)
-      
-      :else (loop [col 0]
-              (cond
-                (> col 6) (rand-int 7)
-                (get (check-col-top-2-helper game-board col own-game-piece) 0) col
-                (get (check-left-2-helper game-board col own-game-piece) 0) col
-                (get (check-right-2-helper game-board col own-game-piece) 0) col
-                (get (check-diag-left-bottom-2-helper game-board col own-game-piece) 0) col
-                (get (check-diag-left-top-2-helper game-board col own-game-piece) 0) col
-                (get (check-diag-right-top-2-helper game-board col own-game-piece) 0) col
-                (get (check-diag-right-bottom-2-helper game-board col own-game-piece) 0) col
-                (get (check-diag-left-bottom-helper game-board col own-game-piece) 0) col
-                (get (check-diag-left-top-helper game-board col own-game-piece) 0) col
-                (get (check-diag-right-top-helper game-board col own-game-piece) 0) col
-                (get (check-diag-right-bottom-helper game-board col own-game-piece) 0) col
-                (get (check-col-top-helper game-board col own-game-piece) 0) col
-                (get (check-left-helper game-board col own-game-piece) 0) col
-                (get (check-right-helper game-board col own-game-piece) 0) col
-                :ELSE (recur (inc col)))))))
-    
-(defn best-player
-  [state]
-  (make-push-instruction state best-player-helper [:game-state :string :string] :integer))
-      
  ;;;;;;;;;;
 ;; Interpreter
 (defn interpret-one-step
@@ -1287,48 +1332,58 @@
 
 
 
-(defn switching
-  [player individual1 individual2]
-  ;;(print individual2)
-  (if (= player "***")
-    individual2
-    individual1))
+(defn switch-player
+  "Returns a disc that is different from player."
+  [player p1 p2]
+  (if (= player p1)
+    p2
+    p1))
+
 
 (defn switching-forward
+  "Returns individual1 if the current player is ***;
+  returns individual2 if the current player is ooo"
   [player individual1 individual2]
-  ;;(print individual2)
   (if (= player "ooo")
     individual2
     individual1))
 
-(defn error-eval-old
-  "Takes an individual, an individual input.
-  Returns absolute value of the difference (error)
-  between the output from the program and the desired output."
+(defn error-eval-forward
+  "Takes two individuals as  inputs.
+  Individual1 playe first using piece ooo,
+  and inividual2 plays second using piece ***.
+  Returns 0 if individual1 wins the game.
+  Returns 1000 if individual 1 does not generate an integer outpu.
+  If individual2 wins the game, returns
+  100-#(pieces on the board)."
+  
   [individual1 individual2]
+  
   ;; init-state is an empty push state with :in1 = input value.
   ;; result-state is the state after interpreting the push program of the
   ;; individual over the init-state
   ;; output is the integer on top of the integer stack in the result state.
-
   (loop [init-board empty-board
          player "ooo"
-         init-state (assoc empty-push-state :input {:in1 init-board :in2 "ooo" :in3 "***"} :game-state (list init-board))
-         result-state (interpret-push-program (individual1 :program) init-state)
+         init-state (assoc empty-push-state
+                           :input {:in1 init-board :in2 "ooo" :in3 "***"}
+                           :game-state (list init-board))
+         result-state (interpret-push-program (individual1 :program)
+                                              init-state)
          step (peek-stack result-state :integer)
          round 0]
 
-    ;(print-board init-board)
-    ;(println player)
-    ;(println step)
-    ;; Note that if the program does not have any output,
-    ;; returns a penalty error of 1000.
     ;; if the game-board is full, return 1, fail to win
     (if (full-board init-board)
       1
+      ;; If current individual does not generate a valid output...
       (if (= step :no-stack-item)
+        ;; If the current individual is individual1,
+        ;; returns a penalty error of 1000.
         (if (= player "ooo")
           1000
+          ;; If individual2 does not have integer outputs,
+          ;; choose a random step for it and continue the game.
           (let [step (rand-int 7)
                 colnum (next-avail-col init-board step)
                 game-board (play-a-step init-board player step)
@@ -1338,13 +1393,12 @@
                                             :in3 "***"}
                                     :game-state (list game-board))
                 result-state-2 (interpret-push-program
-                                ((switching-forward player individual1 individual2) :program)
+                                ((switching-forward player
+                                                    individual1
+                                                    individual2) :program)
                                 init-state-2)]
-            ;;(println (init-state-2 :input))
-            ;;(print-board game-board)
-            ;;(println checklist)
-            ;;(println player)
-            ;;(println)
+            ;; If individual1 wins, returns 0.
+            ;; If individual2 wins, returns 100 - # of pieces on the board.
             (cond (and (win-check game-board player) (= player "ooo")) 0
                   (and (win-check game-board player) (= player "***")) (- 100 round)
                   :ELSE (recur game-board
@@ -1353,7 +1407,9 @@
                                result-state-2
                                (peek-stack result-state-2 :integer)
                                (inc round)))))
-        
+
+        ;; When the output is valid, players the game,
+        ;; and changes the player
         (let [colnum (next-avail-col init-board step)
               game-board (play-a-step init-board player step)
               init-state-2 (assoc empty-push-state
@@ -1364,7 +1420,8 @@
               result-state-2 (interpret-push-program
                               ((switching-forward player individual1 individual2) :program)
                               init-state-2)]
-
+          ;; If individual1 wins, returns 0.
+          ;; If individual2 wins, returns 100 - # of pieces on the board.
           (cond (and (win-check game-board player) (= player "ooo")) 0
                 (and (win-check game-board player) (= player "***")) (- 100 round)
                 :ELSE (recur game-board
@@ -1374,11 +1431,23 @@
                              (peek-stack result-state-2 :integer)
                              (inc round))))))))
 
+(defn switching-backward
+  "Returns individual2 if the current player is ***;
+  returns individual1 if the current player is ooo"
+  [player individual1 individual2]
+  (if (= player "***")
+    individual2
+    individual1))
 
-(defn error-eval
-  "Takes an individual, an individual input.
-  Returns absolute value of the difference (error)
-  between the output from the program and the desired output."
+(defn error-eval-backward
+  "Takes two individuals as inputs.
+  Individual2 playe first using piece ooo
+  and inividual1 plays second using piece ***.
+  Returns 0 if individual1 wins the game.
+  Returns 1000 if individual 1 does not generate an integer outpu.
+  If individual2 wins the game, returns
+  100-#(pieces on the board)."
+
   [individual1 individual2]
   ;; init-state is an empty push state with :in1 = input value.
   ;; result-state is the state after interpreting the push program of the
@@ -1387,22 +1456,25 @@
 
   (loop [init-board empty-board
          player "ooo"
-         init-state (assoc empty-push-state :input {:in1 init-board :in2 "ooo" :in3 "***"} :game-state (list init-board))
-         result-state (interpret-push-program (individual2 :program) init-state)
+         init-state (assoc empty-push-state
+                           :input {:in1 init-board :in2 "ooo" :in3 "***"}
+                           :game-state (list init-board))
+         result-state (interpret-push-program (individual2 :program)
+                                              init-state)
          step (peek-stack result-state :integer)
          round 0]
 
-   ;(print-board init-board)
-   ;(println player)
-   ;(println step)
-    ;; Note that if the program does not have any output,
-    ;; returns a penalty error of 1000.
     ;; if the game-board is full, return 1, fail to win
     (if (full-board init-board)
       1
+      ;; If current individual does not generate a valid output...
       (if (= step :no-stack-item)
+        ;; If the current individual is individual1,
+        ;; returns a penalty error of 1000.
         (if (= player "***")
           1000
+          ;; If individual2 does not have integer outputs,
+          ;; choose a random step for it and continue the game.
           (let [step (rand-int 7)
                 colnum (next-avail-col init-board step)
                 game-board (play-a-step init-board player step)
@@ -1412,13 +1484,10 @@
                                             :in3 "ooo"}
                                     :game-state (list game-board))
                 result-state-2 (interpret-push-program
-                                ((switching player individual1 individual2) :program)
+                                ((switching-backward player individual1 individual2) :program)
                                 init-state-2)]
-            ;;(println (init-state-2 :input))
-            ;;(print-board game-board)
-            ;;(println checklist)
-            ;;(println player)
-            ;;(println)
+            ;; If individual1 wins, returns 0.
+            ;; If individual2 wins, returns 100 - # of pieces on the board.
             (cond (and (win-check game-board player) (= player "***")) 0
                   (and (win-check game-board player) (= player "ooo")) (- 100 round)
                   :ELSE (recur game-board
@@ -1428,6 +1497,8 @@
                                (peek-stack result-state-2 :integer)
                                (inc round)))))
         
+        ;; When the output is valid, players the game,
+        ;; and changes the player
         (let [colnum (next-avail-col init-board step)
               game-board (play-a-step init-board player step)
               init-state-2 (assoc empty-push-state
@@ -1436,9 +1507,11 @@
                                           :in3 player}
                                   :game-state (list game-board))
               result-state-2 (interpret-push-program
-                              ((switching player individual1 individual2) :program)
+                              ((switching-backward player individual1 individual2) :program)
                               init-state-2)]
- 
+
+          ;; If individual1 wins, returns 0.
+          ;; If individual2 wins, returns 100 - # of pieces on the board.
           (cond (and (win-check game-board player) (= player "***")) 0
                 (and (win-check game-board player) (= player "ooo")) (- 100 round)
                 :ELSE (recur game-board
@@ -1448,7 +1521,8 @@
                              (peek-stack result-state-2 :integer)
                              (inc round))))))))
 
-;;;;;;;;;;
+
+;;;;;;;;;;;;;;
 ;; GP
 
 (defn make-random-push-program
@@ -1487,8 +1561,14 @@
                winner)))))
 
 
-(defn tournament-lexicase-selection
-  "Selects an individual from the population using a tournament of size 5.
+;; Note that this introduces a new parent selection method.
+;; CITATION: Using the algorithm of lexicase selection from class note,
+;; combining it with the the tournament selection.
+(defn lexicase-tournament-selection
+  "Selects an individual from the candidates using lexicase selection
+  over the input case-list. Selects the individual from the final
+  candidates list using a tournament of size 5.
+  tournament of size 5. 
   Returned individual will be a parent in the next generation."
   [population case-list]
   ;; Takes five individuals from the population randomly.
@@ -1497,9 +1577,7 @@
   (loop [candidates population
          cases case-list]
     (let [cand-list
-          (filter #(= (error-eval % (first cases)) 0) candidates)]
-      ;;(println (count candidates))
-      ;;(println (count cand-list))
+          (filter #(= (error-eval-forward % (first cases)) 0) candidates)]
       (cond
         (empty? cand-list) (tournament-selection candidates)
         (= 1 (count cases)) (rand-nth cand-list)
@@ -1507,19 +1585,23 @@
                      (rest cases))))))
 
 
-(defn lexicase-tournament-selection
-  "Selects an individual from the population using a tournament of size 5.
+;; Note that this introduces a new parent selection method.
+;; CITATION: Using the algorithm of lexicase selection from class note,
+;; combining it with the the tournament selection.
+(defn tournament-lexicase-selection
+  "First, generates a candidates list from the population using a
+  tournament of size 5. 
+  Selects an individual from the candidates using lexicase selection
+  over the input case-list.
   Returned individual will be a parent in the next generation."
   [population case-list]
   ;; Takes five individuals from the population randomly.
-  ;; Does a tail recursion on comparing the total-error of two individuals;
+  ;; Does a tail recursion on comparing the error of two individuals;
   ;; winner will be the individual with the lowest total-error so far.
   (loop [candidates (take 5 (repeatedly #(tournament-selection population)))
          cases case-list]
     (let [cand-list
-          (filter #(= (error-eval % (first cases)) 0) candidates)]
-      ;;(println (count candidates))
-      ;;(println (count cand-list))
+          (filter #(= (error-eval-forward % (first cases)) 0) candidates)]
       (cond
         (empty? cand-list) (rand-nth candidates)
         (= 1 (count cases)) (rand-nth cand-list)
@@ -1588,56 +1670,46 @@
   (filter #(not (mutation-rate %)) prog))
 
 
-(defn select-and-vary-old
-  "Selects parent(s) from population using tournament selection of size 5
-  and varies them, returning a child individual (note: not program).
-  Chooses which genetic operator to use probabilistically.
-  Gives 50% chance to crossover, 25% to uniform-addition,
-  and 25% to uniform-deletion."
-  [population]
-  (let [genetic-chance (rand-int 4)
-        parent1 ((tournament-selection population) :program)
-        parent2 ((tournament-selection population) :program)]
-    ;; Note that the default setting for the returned child individual
-    ;; will have a error vector of [] and a total-error of 0.
-    (cond
-      (= genetic-chance 0) {:program (uniform-addition parent1),
-                            :errors [],
-                            :total-error 0}
-      (= genetic-chance 1) {:program (uniform-deletion parent2),
-                            :errors [],
-                            :total-error 0}
-      :ELSE {:program (crossover parent1 parent2),
-             :errors [],
-             :total-error 0})))
-
 (defn select-and-vary
   "Selects parent(s) from population using tournament selection of size 5
   and varies them, returning a child individual (note: not program).
   Chooses which genetic operator to use probabilistically.
-  Gives 50% chance to crossover, 25% to uniform-addition,
-  and 25% to uniform-deletion."
+  Gives 20% chance to crossover using tournament-lexicase-selection,
+  20% chance to crossover using lexicase-tournament-selection,
+  20% chance to crossover using regular tournament-selection,
+  20% to uniform-addition,
+  and 20% to uniform-deletion."
   [population]
-  (let [genetic-chance (rand-int 6)
+  (let [genetic-chance (rand-int 5)
         cases (take 50 (repeatedly #(rand-nth population)))
         reverse-cases (reverse cases)]
     ;; Note that the default setting for the returned child individual
     ;; will have a error vector of [] and a total-error of 0.
     (cond
-      (= genetic-chance 0) {:program (uniform-addition ((tournament-selection population) :program)),
+      (= genetic-chance 1) {:program (uniform-addition ((tournament-selection population) :program)),
                             :errors [],
                             :total-error 0}
-      (= genetic-chance 1) {:program (uniform-deletion ((tournament-selection population) :program)),
+      
+      (= genetic-chance 2) {:program (uniform-deletion ((tournament-selection population) :program)),
                             :errors [],
                             :total-error 0}
-      (< genetic-chance 4) {:program (crossover ((tournament-lexicase-selection population cases) :program)
+      
+      (= genetic-chance 3) {:program (crossover ((tournament-lexicase-selection population cases) :program)
                                                 ((tournament-lexicase-selection population reverse-cases) :program)),
                             :errors [],
                             :total-error 0}
-      :ELSE {:program (crossover ((tournament-selection population) :program)
-                                 ((tournament-selection population) :program)),
-                            :errors [],
-                            :total-error 0})))
+      
+      (= genetic-chance 4)  {:program (crossover ((lexicase-tournament-selection population cases) :program)
+                                                 ((lexicase-tournament-selection population reverse-cases) :program)),
+                             :errors [],
+                             :total-error 0}
+      
+      :ELSE  {:program (crossover ((tournament-selection population) :program)
+                                  ((tournament-selection population) :program)),
+                             :errors [],
+                             :total-error 0})))
+
+
 
 (defn best-tournament-selection
   "Selects an individual from the population using a tournament. Returned
@@ -1654,6 +1726,7 @@
              (if (< ((first tourn-lst) :total-error) (winner :total-error))
                (first tourn-lst)
                winner)))))
+
 
 (defn report
   "Reports information on the population each generation. Should look something
@@ -1682,20 +1755,6 @@
     best-program))
 
 
-(defn initialize-population-1
-  "Takes a population-size, a list of instructions,
-  , a maximum initial program size and an error function.
-  Generates a population of randomly generated individuals.
-  Then, evaluates the population by the input error function.
-  Returns the evaluated population."
-  [population-size instructions max-initial-program-size error-function]
-  ;; Evaluates each individual over the error function.
-  ;; Generates a population randomly.
-  (take population-size
-        (repeatedly #(error-function
-                      (make-random-individual instructions
-                                              max-initial-program-size)))))
-
 (defn initialize-population
   "Takes a population-size, a list of instructions,
   , a maximum initial program size and an error function.
@@ -1715,72 +1774,35 @@
 (defn generate-new-population
   "Takes a population, a population-size, and an error function to evaluate.
   Repeatedly generates an individual from the input population with
-  50% chance to crossover, 25% to uniform-addition and 25% to uniform-deletion,
+  60% chance to crossover, 20% to uniform-addition and 20% to uniform-deletion,
   and evaluates the individuals using error-function.
   Returns the evaluated new population."
   [population population-size error-function]
   (take population-size
         (repeatedly #(error-function (select-and-vary population) population))))
 
-(defn push-gp
-  "Main GP loop. Initializes the population, and then repeatedly
-  generates and evaluates new populations. Stops if it finds an
-  individual with 0 error (and should return :SUCCESS, or if it
-  exceeds the maximum generations (and should return nil). Should print
-  report each generation.
-  --
-  The only argument should be a map containing the core parameters to
-  push-gp. The format given below will decompose this map into individual
-  arguments. These arguments should include:
-  - population-size
-  - max-generations
-  - error-function
-  - instructions (a list of instructions)
-  - max-initial-program-size (max size of randomly generated programs)"
-  [{:keys [population-size max-generations error-function
-           instructions max-initial-program-size]}]
-  ;; Starts with initializing and evaluating a population.
-  ;; Does a tail recursion on generating and evaluating new populations
-  ;; from the old generation. Prints out a report for each generation.
-  ;; Note that the report function prints a report and
-  ;; returns an individual with best total-error in the population.
-  (loop [initial-population (initialize-population population-size
-                                                   instructions
-                                                   max-initial-program-size
-                                                   error-function)
-         generation 0
-         best-prog (report initial-population generation)]
-    ;; Stops if it finds and individual with a total error of 0 (returns
-    ;; :SUCCESS) or if the program exceeds the maximum generation (returns nil).
-    (cond
-      (= (best-prog :total-error) 0) :SUCCESS
-      (= generation max-generations) nil
-      :ELSE (let [new-population (generate-new-population initial-population
-                                                          population-size
-                                                          error-function)]
-              (recur new-population
-                     (inc generation)
-                     (report new-population (inc generation)))))))
 
 (defn rand-list-generator
+  "Returns a list of x randomly generated numbers less than the max-value."
   [x max-value]
   (map (fn [%] (rand-int max-value)) (range x)))
 
-(defn push-gp-test
-  "Main GP loop. Initializes the population, and then repeatedly
-  +  generates and evaluates new populations. Stops if it finds an
-  +  individual with 0 error (and should return :SUCCESS, or if it
-  +  exceeds the maximum generations (and should return nil). Should print
-  +  report each generation.
-  +  --
-  +  The only argument should be a map containing the core parameters to
-  +  push-gp. The format given below will decompose this map into individual
-  +  arguments. These arguments should include:
-  +  - population-size
-  +  - max-generations
-  +  - error-function
-  +  - instructions (a list of instructions)
-  +  - max-initial-program-size (max size of randomly generated programs)"
+
+(defn push-gp
+  "Main GP loop. Initializes with two populations, and then repeatedly
+   generates and evaluates new populations. Stops if it finds an
+   individual with 0 error (and should return :SUCCESS, or if it
+   exceeds the maximum generations (and should return nil). Should print
+   report each generation.
+   --
+   The only argument should be a map containing the core parameters to
+   push-gp. The format given below will decompose this map into individual
+   arguments. These arguments should include:
+   - population-size
+   - max-generations
+   - error-function
+   - instructions (a list of instructions)
+   - max-initial-program-size (max size of randomly generated programs)"
   [{:keys [population-size max-generations error-function
            instructions max-initial-program-size]}]
   ;; Starts with initializing and evaluating a population.
@@ -1802,7 +1824,7 @@
     ;; Stops if it finds and individual with a total error of 0 (returns
     ;; :SUCCESS) or if the program exceeds the maximum generation (returns nil).
     (cond
-      (or (= (best-prog-2 :total-error) 0) (= (best-prog :total-error) 0)) :SUCCESS
+      (or (= (best-prog :total-error) 0) (= (best-prog-2 :total-error) 0)) :SUCCESS
       (= generation max-generations) nil
       :ELSE (let [rand-subpop (map #(nth initial-population %)
                                    (rand-list-generator 3 population-size))
@@ -1822,166 +1844,146 @@
                      (report new-population (inc generation))
                      (report new-population-2 (inc generation)))))))
 
-;;;;;;;;;;
-;; The functions below are specific to a particular problem.
-;; A different problem would require replacing these functions.
-;; Problem: f(x) = x^3 + x + 3
+;;;;;;;;;;;;;;;;;;;
+; helper push instructions for advanced test cases, but not for push gp.
 
-(defn target-function
-  "Target function: f(x) = x^3 + x + 3
-  Should literally compute this mathematical function."
-  [x]
-  (+ (* x x x) x 3))
+(defn advanced-player-helper
+  [game-board]
+  (loop [num 0]
+    (cond
+      (> num 6) (rand-int 7)
+      (get (fake-step-win-checker-helper game-board num) 1) num
+      :ELSE (recur (inc num)))))
 
-(defn random-strategy
-  []
-  (rand-nth (range 7)))
+(defn advanced-player
+  [state]
+  (make-push-instruction state advanced-player-helper
+                         [:game-state] :integer))
 
+(defn ultimate-win-piece-checker-helper
+  ""
+  [game-board game-piece]
+  (loop [col 0]
+    (cond
+      (> col 6) (rand-int 7)
+      (win-check (play-a-step game-board game-piece col) game-piece) col
+      :ELSE (recur (inc col)))))
 
-(defn game
-  [board p1 p2]
-  (loop [init-board board
-         player p1
-         step (random-strategy)]
+(defn ultimate-win-piece-checker
+  [state]
+  (make-push-instruction state ultimate-win-piece-checker-helper [:game-state :string] :integer))
 
-    (let [colnum (next-avail-col init-board step)
-          game-board (play-a-step init-board player step)
-          checklist (check game-board colnum)]
+(defn ultimate-win-checker-helper
+  ""
+  [game-board]
+  (loop [col 0]
+    (cond
+      (> col 6) (rand-int 7)
+      (win-check (play-a-step game-board "ooo" col) "ooo") col
+      (win-check (play-a-step game-board "***" col) "***") col
+      :ELSE (recur (inc col)))))
 
-      (print-board game-board)
-      (println checklist)
-      (println player)
-      (println)
-      (if (win-check checklist player)
-        player
-        (recur game-board
-               (switch-player player p1 p2)
-               (random-strategy))))))
+(defn ultimate-win-checker
+  [state]
+  (make-push-instruction state ultimate-win-checker-helper [:game-state] :integer))
 
+(defn best-player-helper
+  [game-board opponent-game-piece own-game-piece]
+  (let [checklist1 (filter #(win-check
+                             (play-a-step game-board own-game-piece %)
+                             own-game-piece) (range 7))
+        checklist2 (filter #(win-check
+                             (play-a-step game-board opponent-game-piece %)
+                             opponent-game-piece) (range 7))]
+    (cond
+      (not (empty? checklist1)) (first checklist1)
+      (not (empty? checklist2)) (first checklist2)
+      :else (loop [col 0]
+              (cond
+                (> col 6) (rand-int 7)
+                (get (check-col-top-2-helper game-board col own-game-piece) 0) col
+                (get (check-left-2-helper game-board col own-game-piece) 0) col
+                (get (check-right-2-helper game-board col own-game-piece) 0) col
+                (get (check-diag-left-bottom-2-helper game-board col own-game-piece) 0) col
+                (get (check-diag-left-top-2-helper game-board col own-game-piece) 0) col
+                (get (check-diag-right-top-2-helper game-board col own-game-piece) 0) col
+                (get (check-diag-right-bottom-2-helper game-board col own-game-piece) 0) col
+                (get (check-diag-left-bottom-helper game-board col own-game-piece) 0) col
+                (get (check-diag-left-top-helper game-board col own-game-piece) 0) col
+                (get (check-diag-right-top-helper game-board col own-game-piece) 0) col
+                (get (check-diag-right-bottom-helper game-board col own-game-piece) 0) col
+                (get (check-col-top-helper game-board col own-game-piece) 0) col
+                (get (check-left-helper game-board col own-game-piece) 0) col
+                (get (check-right-helper game-board col own-game-piece) 0) col
+                :ELSE (recur (inc col)))))))
 
-(defn mock-game
-  "Takes an individual, an individual input.
-  Returns absolute value of the difference (error)
-  between the output from the program and the desired output."
-  [individual1 individual2]
-  ;; init-state is an empty push state with :in1 = input value.
-  ;; result-state is the state after interpreting the push program of the
-  ;; individual over the init-state
-  ;; output is the integer on top of the integer stack in the result state.
-  (loop [init-board empty-board
-         player "ooo"
-         init-state (assoc empty-push-state :input {:in1 init-board :in2 "ooo" :in3 "***"} :game-state (list init-board))
-         result-state (interpret-push-program (individual1 :program) init-state)
-         step (peek-stack result-state :integer)]
-    (print-board init-board)
-    ;(println result-state)
-    ;(println init-state)
-    (println player)
-    (println step)
-    
-    ;; Note that if the program does not have any output,
-    ;; returns a penalty error of 1000.
-    ;; if the game-board is full, return 1, fail to win
-    (if (full-board init-board)
-      1
-      (if (= step :no-stack-item)
-        (if (= player "ooo")
-          1000
-          (let [step (rand-int 7)
-                colnum (next-avail-col init-board step)
-                game-board (play-a-step init-board player step)
-                init-state-2 (assoc empty-push-state
-                                    :input {:in1 game-board
-                                            :in2 "ooo"
-                                            :in3 "***"}
-                                    :game-state (list game-board))
-                result-state-2 (interpret-push-program
-                                ((switching-forward player individual1 individual2) :program)
-                                init-state-2)]
-            ;;(println (init-state-2 :input))
-            ;;(print-board game-board)
-            ;;(println checklist)
-            ;;(println player)
-            ;;(println)
-            (cond (and (win-check game-board player) (= player "ooo")) 0
-                  (and (win-check game-board player) (= player "***")) 1
-                  :ELSE (recur game-board
-                               "ooo"
-                               init-state-2
-                               result-state-2
-                               (peek-stack result-state-2 :integer)))))
-        
-        (let [colnum (next-avail-col init-board step)
-              game-board (play-a-step init-board player step)
-              init-state-2 (assoc empty-push-state
-                                  :input {:in1 game-board
-                                          :in2 (switch-player player "ooo" "***")
-                                          :in3 player}
-                                  :game-state (list game-board))
-              result-state-2 (interpret-push-program
-                              ((switching-forward player individual1 individual2) :program)
-                              init-state-2)]
- 
-          (cond (and (win-check game-board player) (= player "ooo")) 0
-                (and (win-check game-board player) (= player "***")) 1
-                :ELSE (recur game-board
-                             (switch-player player "ooo" "***")
-                             init-state-2
-                             result-state-2
-                             (peek-stack result-state-2 :integer))))))))
+(defn best-player
+  [state]
+  (make-push-instruction state best-player-helper [:game-state :string :string] :integer))
 
 
-(defn generate-random-index
-  []
-  (range 30))
-
+;; An individual that returns 0.
 (def test-case-0
   {:program '(0) :errors [] :total-error 0})
 
+;; An individual that returns 1.
 (def test-case-1
   {:program '(1) :errors [] :total-error 0})
 
+;; An individual that returns 2.
 (def test-case-2
   {:program '(2) :errors [] :total-error 0})
 
+;; An individual that returns 3.
 (def test-case-3
   {:program '(3) :errors [] :total-error 0})
 
+;; An individual that returns 4.
 (def test-case-4
   {:program '(4) :errors [] :total-error 0})
 
+;; An individual that returns 5.
 (def test-case-5
   {:program '(5) :errors [] :total-error 0})
 
+;; An individual that returns 6.
 (def test-case-6
   {:program '(6) :errors [] :total-error 0})
 
+;; An individual that uses the step helper program as its strategy. 
 (def test-case-7
-  {:program '(step) :errors [] :total-error 0})
+  {:program '(advanced-player) :errors [] :total-error 0})
 
+;; An individual that uses the ultimate-win-piece-checker program as its
+;; game strategy.
 (def test-case-8
   {:program '(in3 ultimate-win-piece-checker) :errors [] :total-error 0})
 
+;; An individual that uses the ultimate-win-checker program as its
+;; game strategy.
 (def test-case-9
   {:program '(ultimate-win-checker) :errors [] :total-error 0})
 
+;; An individual that uses the best-player program as its game strategy.
 (def test-case-10
   {:program '(in3 in2 best-player) :errors [] :total-error 0})
 
+;; An individual that uses random game strategy.
 (def test-case-rand
   {:program '(integer-rand) :errors [] :total-error 0})
 
 
 (defn test-inputs
-  " A list of test cases for the error function.
+  "A list of test cases for the error function.
+  100 of them are randomly selected from the population.
+  10 of them are randomly generated.
+  20 of them are designed intelligent programs.
   All test cases are individuals (maps)."
   [population]
   (let [test-cases (map #(nth population (mod % (count population)))
-                        (generate-random-index))
-        new-test-cases (take 5
-                             (repeatedly #(make-random-individual instructions
-                                                                  50)))]
-    (conj test-cases
+                        (rand-list-generator 100 (dec (count population))))
+        new-test-cases (take 10 (repeatedly #(make-random-individual instructions  50)))]
+    (conj (concat test-cases new-test-cases)
           test-case-0
           test-case-1
           test-case-2
@@ -1994,21 +1996,24 @@
           test-case-7
           test-case-8
           test-case-8
-          test-case-8 
+          test-case-8
           test-case-9
           test-case-9
           test-case-9
-          test-case-10
           test-case-10
           test-case-10
           test-case-10
           test-case-rand)))
 
 
-
 (defn error-function
   "Takes an individual and evaluates it on some test cases. For each test case,
-  runs program with the input set to :in1 in the :input map part of the Push state.
+  runs program with the game-board set to :in1, the program's piece set to in2,
+  and its opponent's piece set to in3 in the :input map part of the Push
+  state.
+  For each test cases, run two tests on it:
+  The first test will let the program play firts and the second test will
+  let the test case play first.
   Then, the output is the integer on top of the integer stack in the Push state
   returned by the interpreter. Computes each error by comparing output of
   the program to the correct output.
@@ -2019,9 +2024,8 @@
 
   ;; test-inputs will be a list of individuals
   [individual population]
-  ;;(print (test-inputs population))
-  (let [;errors (concat (map #(error-eval individual %) (test-inputs population))
-        errors (map #(error-eval-old individual %) (test-inputs population))
+  (let [errors (concat (map #(error-eval-forward individual %) (test-inputs population))
+                       (map #(error-eval-backward individual %) (test-inputs population)))
         total-error (apply +' errors)]
     ;; update the error vector and total-error of the individual
     (assoc individual :errors errors :total-error total-error)))
@@ -2035,9 +2039,9 @@
   "Runs push-gp, giving it a map of arguments."
   [& args]
   (binding [*ns* (the-ns 'push307.core)]
-    (push-gp-test {:instructions instructions
-              :error-function error-function
-              :max-generations 100
-              :population-size 100
-              :max-initial-program-size 50})))
+    (push-gp{:instructions instructions
+             :error-function error-function
+             :max-generations 100
+             :population-size 200
+             :max-initial-program-size 200})))
 
