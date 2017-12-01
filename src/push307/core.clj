@@ -1848,6 +1848,8 @@
 ; helper push instructions for advanced test cases, but not for push gp.
 
 (defn advanced-player-helper
+  "Returns a column number that will lead to a win starting from that
+  position. If there is not one, returns a random integer."
   [game-board]
   (loop [num 0]
     (cond
@@ -1856,12 +1858,17 @@
       :ELSE (recur (inc num)))))
 
 (defn advanced-player
+  "Takes a game state, returns a number that suggests the game strategy
+  using advancec-player-helper function."
   [state]
   (make-push-instruction state advanced-player-helper
                          [:game-state] :integer))
 
+
 (defn ultimate-win-piece-checker-helper
-  ""
+  "Returns a column number that will lead to a win of the given
+  game-piece immediately.
+  If there is not one, returns a random integer."
   [game-board game-piece]
   (loop [col 0]
     (cond
@@ -1870,11 +1877,16 @@
       :ELSE (recur (inc col)))))
 
 (defn ultimate-win-piece-checker
+  "Takes a game state and a string,
+  returns a number that suggests the game strategy
+  using ultimate-win-piece-checker-helper function."
   [state]
   (make-push-instruction state ultimate-win-piece-checker-helper [:game-state :string] :integer))
 
+
 (defn ultimate-win-checker-helper
-  ""
+  "Returns a column number that will lead to a win by any player immediately.
+  If there is not one, returns a random integer."
   [game-board]
   (loop [col 0]
     (cond
@@ -1884,10 +1896,19 @@
       :ELSE (recur (inc col)))))
 
 (defn ultimate-win-checker
+   "Takes a game state, and returns a number that suggests the game strategy
+  using ultimate-win-checker-helper function."
   [state]
   (make-push-instruction state ultimate-win-checker-helper [:game-state] :integer))
 
+
 (defn best-player-helper
+  "Returns a column number that will lead to a win by any player immediately.
+  If there does not exist one, returns a column number that will lead to
+  three pieces in a line.
+  If there does not exist one, returns a column number that will lead to
+  two pieces in a line.
+  Otherwise, returns a random number."
   [game-board opponent-game-piece own-game-piece]
   (let [checklist1 (filter #(win-check
                              (play-a-step game-board own-game-piece %)
@@ -1918,6 +1939,8 @@
                 :ELSE (recur (inc col)))))))
 
 (defn best-player
+  "Takes a game state, and returns a number that suggests the game strategy
+  using best-player-helper function."
   [state]
   (make-push-instruction state best-player-helper [:game-state :string :string] :integer))
 
